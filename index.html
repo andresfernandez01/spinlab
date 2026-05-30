@@ -875,29 +875,49 @@ function switchRecs(deck){
   else showRecsMsg('Load a track on Deck '+deck.toUpperCase()+' to see recommendations');
 }
 
-async function ytSearchOne(artist,track){
-  const q=`${artist} ${track} official`;
-  const r=await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=3&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&key=${YT_KEY}`);
-  const d=await r.json();
-  return (d.items||[]).find(i=>i.id?.videoId&&i.snippet&&!isCompilation(i.snippet.title))||null;
+async function ytSearchOne(artist, track){
+  try{
+    const q=`${artist} ${track} official`;
+    const r=await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=3&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&key=${YT_KEY}`);
+    const d=await r.json();
+    return (d.items||[]).find(i=>i.id?.videoId&&i.snippet&&!isCompilation(i.snippet.title))||null;
+  } catch(e){ return null; }
 }
 
 async function fetchRecs(deck){
   if(!S[deck].vidId||!YT_KEY) return;
   recsCache[deck]=null;
 
-  // Last.fm path
+  // Last.fm path — get similar artists, then search YouTube for each artist
   if(LFM_KEY){
     try{
       const {artist,track}=parseTitle(S[deck].title);
-      const lfmR=await fetch(`https://ws.audioscrobbler.com/2.0/?method=track.getSimilar&artist=${encodeURIComponent(artist)}&track=${encodeURIComponent(track)}&api_key=${LFM_KEY}&format=json&limit=12&autocorrect=1`);
+      // try track.getSimilar first
+      const lfmR=await fetch(`https://ws.audioscrobbler.com/2.0/?method=track.getSimilar&artist=${encodeURIComponent(artist)}&track=${encodeURIComponent(track)}&api_key=${LFM_KEY}&format=json&limit=6&autocorrect=1`);
       const lfmD=await lfmR.json();
       const similar=lfmD?.similartracks?.track;
-      if(similar&&similar.length){
-        const top=similar.slice(0,8);
-        const results=await Promise.all(top.map(t=>ytSearchOne(t.artist?.name||'',t.name||'').catch(()=>null)));
-        const valid=results.filter(r=>r&&r.id?.videoId!==S[deck].vidId);
-        if(valid.length){
+      if(similar&&similar.length>=2){
+        // group by artist and do one YouTube search per unique artist (max 4 searches)
+        const seen=new Set();
+        const artistsToSearch=[];
+        for(const t of similar){
+          const a=t.artist?.name;
+          if(a&&!seen.has(a.toLowerCase())){ seen.add(a.toLowerCase()); artistsToSearch.push({artist:a,track:t.name}); }
+          if(artistsToSearch.length>=4) break;
+        }
+        const valid=[];
+        for(const {artist:a,track:t} of artistsToSearch){
+          // search YouTube for "artist song" — one call returns multiple results
+          const q=`${a} ${t}`;
+          try{
+            const r=await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=2&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&key=${YT_KEY}`);
+            const d=await r.json();
+            const items=(d.items||[]).filter(i=>i.id?.videoId&&i.snippet&&i.id.videoId!==S[deck].vidId&&!isCompilation(i.snippet.title));
+            valid.push(...items);
+          } catch(e){}
+          if(valid.length>=6) break;
+        }
+        if(valid.length>=2){
           recsCache[deck]=valid;
           setRecsBadge('lastfm');
           if(deck===recsActive) renderRecs(valid,deck);
@@ -907,17 +927,17 @@ async function fetchRecs(deck){
     } catch(e){ console.warn('Last.fm failed',e); }
   }
 
-  // YouTube fallback
+  // YouTube fallback — single search
   try{
     const {artist}=parseTitle(S[deck].title);
     const r=await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${encodeURIComponent(artist+' songs')}&type=video&videoCategoryId=10&key=${YT_KEY}`);
     const d=await r.json();
-    if(!d.items||!d.items.length) return;
+    if(!d.items||!d.items.length){ showRecsMsg('No recommendations found'); return; }
     const filtered=d.items.filter(i=>i.id?.videoId&&i.snippet&&i.id.videoId!==S[deck].vidId&&!isCompilation(i.snippet.title));
-    recsCache[deck]=filtered;
+    recsCache[deck]=filtered.length?filtered:d.items.filter(i=>i.id?.videoId&&i.snippet);
     setRecsBadge('youtube');
-    if(deck===recsActive) renderRecs(filtered,deck);
-  } catch(e){ console.warn('Recs fallback error',e); }
+    if(deck===recsActive) renderRecs(recsCache[deck],deck);
+  } catch(e){ showRecsMsg('Could not load recommendations'); }
 }
 
 function renderRecs(items,deck){
