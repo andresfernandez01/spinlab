@@ -226,6 +226,9 @@ input[type=range].master::-webkit-slider-thumb{-webkit-appearance:none;width:14p
 .rec-act.a:hover,.rec-act.b:hover{background:var(--orangeGlow)}
 .rec-act.st.on{color:var(--orange)}
 .recs-msg{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);padding:14px 0;text-align:center;font-style:italic;grid-column:1/-1}
+.recs-source-badge{font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;padding:2px 7px;border-radius:3px;border:1px solid}
+.recs-source-badge.lastfm{color:#d51007;border-color:#d51007;background:rgba(213,16,7,0.1)}
+.recs-source-badge.youtube{color:var(--muted);border-color:var(--border2);background:transparent}
 
 #yt-container{position:fixed;top:-9999px;left:-9999px;width:320px;height:180px}
 .autofade-section{width:100%;display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--border);padding-top:12px;margin-top:2px}
@@ -475,8 +478,11 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 <div class="bottom-panel" id="recs-panel" style="display:none">
   <div class="panel-box">
     <div class="panel-head">
-      <div>
-        <div class="panel-title">↻ UP NEXT</div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="panel-title">↻ UP NEXT</div>
+          <div class="recs-source-badge" id="recs-badge" style="display:none"></div>
+        </div>
         <div class="panel-sub" id="recs-source"></div>
       </div>
       <div class="recs-deck-btns">
@@ -637,13 +643,15 @@ function loadTrack(deck,vidId,title){
   // clear stale cache and schedule a fresh recs fetch
   recsCache[deck]=null;
   clearTimeout(recsTimer[deck]);
+  // switch the UP NEXT view to whichever deck just loaded
+  recsActive=deck;
+  document.getElementById('recs-btn-a').classList.toggle('on',deck==='a');
+  document.getElementById('recs-btn-b').classList.toggle('on',deck==='b');
   recsTimer[deck]=setTimeout(()=>{
-    // update source label immediately if this deck is active
-    if(deck===recsActive){
-      showRecsMsg('Finding related tracks...');
-      document.getElementById('recs-source').textContent='based on: '+title.slice(0,45)+(title.length>45?'…':'');
-      document.getElementById('recs-panel').style.display='block';
-    }
+    showRecsMsg('Finding related tracks...');
+    setRecsBadge(null);
+    document.getElementById('recs-source').textContent='based on: '+title.slice(0,45)+(title.length>45?'…':'');
+    document.getElementById('recs-panel').style.display='block';
     fetchRecs(deck);
   },1200);
 }
@@ -988,6 +996,7 @@ async function fetchRecs(deck){
   if(deck===recsActive){
     document.getElementById('recs-panel').style.display='block';
     showRecsMsg('Finding related tracks...');
+    setRecsBadge(null);
     document.getElementById('recs-source').textContent='based on: '+S[deck].title.slice(0,45)+(S[deck].title.length>45?'…':'');
   }
 
@@ -1002,6 +1011,7 @@ async function fetchRecs(deck){
       const valid = results.filter(r=>r&&r.id?.videoId!==S[deck].vidId);
       if(valid.length){
         recsCache[deck]=valid;
+        setRecsBadge('lastfm');
         if(deck===recsActive) renderRecs(valid,deck);
         return;
       }
@@ -1017,11 +1027,22 @@ async function fetchRecs(deck){
     if(!d.items||!d.items.length) return;
     const filtered=d.items.filter(i=>i.id?.videoId&&i.snippet&&i.id.videoId!==S[deck].vidId&&!isCompilation(i.snippet.title));
     recsCache[deck]=filtered;
+    setRecsBadge('youtube');
     if(deck===recsActive) renderRecs(filtered,deck);
   } catch(e){ console.warn('Recs fallback error',e); }
 }
 
-function showRecsMsg(msg){
+function setRecsBadge(source){
+  const badge=document.getElementById('recs-badge');
+  if(!badge) return;
+  if(source==='lastfm'){
+    badge.textContent='LAST.FM'; badge.className='recs-source-badge lastfm'; badge.style.display='block';
+  } else if(source==='youtube'){
+    badge.textContent='YOUTUBE'; badge.className='recs-source-badge youtube'; badge.style.display='block';
+  } else {
+    badge.style.display='none';
+  }
+}
   const grid=document.getElementById('recs-grid'); grid.innerHTML='';
   const m=document.createElement('div'); m.className='recs-msg'; m.textContent=msg;
   grid.appendChild(m);
