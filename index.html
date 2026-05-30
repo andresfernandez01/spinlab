@@ -168,6 +168,27 @@ input[type=range].master::-webkit-slider-thumb{-webkit-appearance:none;width:14p
 .no-key-banner button{background:none;border:1px solid var(--orange);border-radius:3px;color:var(--orange);font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;padding:3px 10px;cursor:pointer;transition:all .1s}
 .no-key-banner button:hover{background:var(--orangeGlow)}
 #yt-container{position:fixed;top:-9999px;left:-9999px;width:320px;height:180px}
+.recs-section{max-width:1280px;margin:0 auto}
+.recs-source{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted)}
+.recs-deck-btn{height:24px;padding:0 10px;border-radius:3px;background:none;border:1px solid var(--border2);color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;cursor:pointer;transition:all .1s}
+.recs-deck-btn:hover{color:var(--text);border-color:var(--muted)}
+.recs-deck-btn.active{color:var(--orange);border-color:var(--orange);background:var(--orangeGlow)}
+.recs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px}
+.rec-card{background:var(--groove);border:1px solid var(--border);border-radius:4px;overflow:hidden;cursor:pointer;transition:border-color .15s;display:flex;flex-direction:column}
+.rec-card:hover{border-color:var(--border2)}
+.rec-thumb{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;background:#111}
+.rec-info{padding:7px 9px;display:flex;flex-direction:column;gap:4px;flex:1}
+.rec-title{font-size:10px;color:var(--text);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.rec-channel{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rec-actions{display:flex;gap:4px;padding:0 9px 8px;margin-top:auto}
+.rec-act{flex:1;height:24px;border-radius:2px;background:linear-gradient(180deg,#353535,#252525);border:1px solid var(--border);font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;letter-spacing:1px;cursor:pointer;color:var(--muted);transition:all .08s}
+.rec-act:hover{color:var(--text);border-color:var(--border2)}
+.rec-act.a{color:var(--orange);border-color:var(--orange)}
+.rec-act.a:hover{background:var(--orangeGlow)}
+.rec-act.b{color:var(--orange);border-color:var(--orange)}
+.rec-act.b:hover{background:var(--orangeGlow)}
+.rec-act.star.active{color:var(--orange)}
+.recs-loading{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);padding:16px 0;text-align:center;font-style:italic;grid-column:1/-1}
 </style>
 </head>
 <body>
@@ -404,6 +425,23 @@ input[type=range].master::-webkit-slider-thumb{-webkit-appearance:none;width:14p
   </div>
 </div>
 
+<!-- RECOMMENDATIONS -->
+<div class="recs-section" id="recs-section" style="display:none">
+  <div class="crates-panel">
+    <div class="crates-head">
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <span class="crates-title">↻ UP NEXT</span>
+        <span class="recs-source" id="recs-source"></span>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="recs-deck-btn active" id="recs-btn-a" onclick="switchRecsDeck('a')">DECK A</button>
+        <button class="recs-deck-btn" id="recs-btn-b" onclick="switchRecsDeck('b')">DECK B</button>
+      </div>
+    </div>
+    <div class="recs-grid" id="recs-grid"></div>
+  </div>
+</div>
+
 <script>
 // ── API KEY — loaded from localStorage, editable via settings ──
 const STORE_KEY = 'spinlab-favs';
@@ -556,6 +594,9 @@ function onState(e,deck){
     document.getElementById('led-'+deck).classList.add('on');
     if(!s.bpm) detectBPM(deck);
     drawWF(deck);
+    // fetch recommendations (debounced so rapid loads don't spam API)
+    clearTimeout(recsFetchTimer[deck]);
+    recsFetchTimer[deck]=setTimeout(()=>fetchRecs(deck), 1500);
   } else {
     s.playing=false;
     document.getElementById('play-'+deck).textContent='▶';
@@ -575,7 +616,10 @@ async function doSearch(deck){
     d.items.forEach(item=>{
       const vid=item.id.videoId,ttl=item.snippet.title;
       const div=document.createElement('div'); div.className='result-item';
-      div.innerHTML=`<span class="result-title">${ttl}</span><span class="ri-star${isFav(vid)?' active':''}" onclick="starRI(this,'${vid}','${esc(ttl)}',event)">★</span>`;
+      const titleSpan=document.createElement('span');titleSpan.className='result-title';titleSpan.textContent=ttl;
+      const star=document.createElement('span');star.className='ri-star'+(isFav(vid)?' active':'');star.textContent='★';
+      star.onclick=e=>{e.stopPropagation();toggleFav(vid,ttl);star.classList.toggle('active',isFav(vid));};
+      div.appendChild(titleSpan);div.appendChild(star);
       div.addEventListener('click',e=>{if(!e.target.classList.contains('ri-star'))loadTrack(deck,vid,ttl);});
       res.appendChild(div);
     });
@@ -729,16 +773,82 @@ function renderCrates(){
   empty.style.display='none';grid.innerHTML='';
   [...favs].reverse().forEach(f=>{
     const div=document.createElement('div');div.className='crate-row';
-    div.innerHTML=`<span class="crate-star">★</span><span class="crate-name" title="${esc(f.title)}">${esc(f.title)}</span><div class="crate-acts"><button class="crate-act a-btn" onclick="crateLoad('a','${f.vid}','${esc(f.title)}')">A</button><button class="crate-act b-btn" onclick="crateLoad('b','${f.vid}','${esc(f.title)}')">B</button><button class="crate-act del" onclick="removeFav('${f.vid}')">✕</button></div>`;
+    // use data attributes to avoid HTML encoding issues in onclick
+    const star=document.createElement('span');star.className='crate-star';star.textContent='★';
+    const name=document.createElement('span');name.className='crate-name';name.title=f.title;name.textContent=f.title;
+    const acts=document.createElement('div');acts.className='crate-acts';
+    const btnA=document.createElement('button');btnA.className='crate-act a-btn';btnA.textContent='A';btnA.onclick=()=>loadTrack('a',f.vid,f.title);
+    const btnB=document.createElement('button');btnB.className='crate-act b-btn';btnB.textContent='B';btnB.onclick=()=>loadTrack('b',f.vid,f.title);
+    const btnDel=document.createElement('button');btnDel.className='crate-act del';btnDel.textContent='✕';btnDel.onclick=()=>removeFav(f.vid);
+    acts.appendChild(btnA);acts.appendChild(btnB);acts.appendChild(btnDel);
+    div.appendChild(star);div.appendChild(name);div.appendChild(acts);
     grid.appendChild(div);
   });
 }
 
-function crateLoad(deck,vid,title){loadTrack(deck,vid,title);}
 function removeFav(vid){favs=favs.filter(f=>f.vid!==vid);saveFavs();renderCrates();updateNPFav('a');updateNPFav('b');}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/'/g,'&#39;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
-function mainLoop(){
+// ── RECOMMENDATIONS ──────────────────────────────────────────
+let recsActiveDeck='a';
+let recsCache={a:null,b:null};
+let recsFetchTimer={a:null,b:null};
+
+function switchRecsDeck(deck){
+  recsActiveDeck=deck;
+  document.getElementById('recs-btn-a').classList.toggle('active',deck==='a');
+  document.getElementById('recs-btn-b').classList.toggle('active',deck==='b');
+  if(recsCache[deck]) renderRecs(recsCache[deck], deck);
+  else if(state[deck].vidId) fetchRecs(deck);
+  else { document.getElementById('recs-grid').innerHTML='<div class="recs-loading">Load a track on Deck '+deck.toUpperCase()+' to see recommendations</div>'; }
+}
+
+async function fetchRecs(deck){
+  const vidId=state[deck].vidId; if(!vidId||!YT_KEY) return;
+  recsCache[deck]=null;
+  if(deck===recsActiveDeck){
+    document.getElementById('recs-section').style.display='block';
+    document.getElementById('recs-grid').innerHTML='<div class="recs-loading">Finding related tracks...</div>';
+    document.getElementById('recs-source').textContent='based on: '+state[deck].title.slice(0,40)+(state[deck].title.length>40?'…':'');
+  }
+  try{
+    const r=await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=8&relatedToVideoId=${vidId}&type=video&key=${YT_KEY}`);
+    const d=await r.json();
+    if(!d.items||!d.items.length) return;
+    recsCache[deck]=d.items.filter(i=>i.id&&i.id.videoId&&i.snippet);
+    if(deck===recsActiveDeck) renderRecs(recsCache[deck], deck);
+  } catch(e){ console.warn('Recs fetch failed',e); }
+}
+
+function renderRecs(items, deck){
+  const grid=document.getElementById('recs-grid');
+  grid.innerHTML='';
+  items.forEach(item=>{
+    const vid=item.id.videoId, title=item.snippet.title, channel=item.snippet.channelTitle;
+    const thumb=item.snippet.thumbnails?.medium?.url||item.snippet.thumbnails?.default?.url||'';
+    const card=document.createElement('div'); card.className='rec-card';
+
+    const img=document.createElement('img'); img.className='rec-thumb'; img.src=thumb; img.alt=title;
+    const info=document.createElement('div'); info.className='rec-info';
+    const ttl=document.createElement('div'); ttl.className='rec-title'; ttl.textContent=title;
+    const ch=document.createElement('div'); ch.className='rec-channel'; ch.textContent=channel;
+    info.appendChild(ttl); info.appendChild(ch);
+
+    const acts=document.createElement('div'); acts.className='rec-actions';
+    const btnA=document.createElement('button'); btnA.className='rec-act a'; btnA.textContent='→ A';
+    btnA.onclick=e=>{e.stopPropagation();loadTrack('a',vid,title);};
+    const btnB=document.createElement('button'); btnB.className='rec-act b'; btnB.textContent='→ B';
+    btnB.onclick=e=>{e.stopPropagation();loadTrack('b',vid,title);};
+    const btnStar=document.createElement('button'); btnStar.className='rec-act star'+(isFav(vid)?' active':''); btnStar.textContent='★';
+    btnStar.onclick=e=>{e.stopPropagation();toggleFav(vid,title);btnStar.classList.toggle('active',isFav(vid));};
+    acts.appendChild(btnA); acts.appendChild(btnB); acts.appendChild(btnStar);
+
+    card.appendChild(img); card.appendChild(info); card.appendChild(acts);
+    card.onclick=()=>loadTrack(recsActiveDeck,vid,title);
+    grid.appendChild(card);
+  });
+  document.getElementById('recs-section').style.display='block';
+}
   ['a','b'].forEach(deck=>{
     const s=state[deck];
     if(s.artColors&&s.playing){s.angle+=0.008;drawArt(deck);}
