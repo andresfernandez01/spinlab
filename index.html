@@ -887,57 +887,61 @@ async function ytSearchOne(artist, track){
 async function fetchRecs(deck){
   if(!S[deck].vidId||!YT_KEY) return;
   recsCache[deck]=null;
+  const {artist,track}=parseTitle(S[deck].title);
+  console.log('[SPINLAB] fetchRecs deck='+deck+' artist="'+artist+'" track="'+track+'" lfmKey='+!!LFM_KEY);
 
-  // Last.fm path — get similar artists, then search YouTube for each artist
+  // Last.fm path
   if(LFM_KEY){
     try{
-      const {artist,track}=parseTitle(S[deck].title);
-      // try track.getSimilar first
-      const lfmR=await fetch(`https://ws.audioscrobbler.com/2.0/?method=track.getSimilar&artist=${encodeURIComponent(artist)}&track=${encodeURIComponent(track)}&api_key=${LFM_KEY}&format=json&limit=6&autocorrect=1`);
+      const lfmUrl=`https://ws.audioscrobbler.com/2.0/?method=track.getSimilar&artist=${encodeURIComponent(artist)}&track=${encodeURIComponent(track)}&api_key=${LFM_KEY}&format=json&limit=6&autocorrect=1`;
+      console.log('[SPINLAB] LFM request:',lfmUrl);
+      const lfmR=await fetch(lfmUrl);
       const lfmD=await lfmR.json();
+      console.log('[SPINLAB] LFM response:',JSON.stringify(lfmD).slice(0,200));
       const similar=lfmD?.similartracks?.track;
       if(similar&&similar.length>=2){
-        // group by artist and do one YouTube search per unique artist (max 4 searches)
         const seen=new Set();
-        const artistsToSearch=[];
+        const toSearch=[];
         for(const t of similar){
           const a=t.artist?.name;
-          if(a&&!seen.has(a.toLowerCase())){ seen.add(a.toLowerCase()); artistsToSearch.push({artist:a,track:t.name}); }
-          if(artistsToSearch.length>=4) break;
+          if(a&&!seen.has(a.toLowerCase())){ seen.add(a.toLowerCase()); toSearch.push({a,t:t.name}); }
+          if(toSearch.length>=4) break;
         }
         const valid=[];
-        for(const {artist:a,track:t} of artistsToSearch){
-          // search YouTube for "artist song" — one call returns multiple results
-          const q=`${a} ${t}`;
+        for(const {a,t} of toSearch){
           try{
+            const q=`${a} ${t}`;
             const r=await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=2&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&key=${YT_KEY}`);
             const d=await r.json();
             const items=(d.items||[]).filter(i=>i.id?.videoId&&i.snippet&&i.id.videoId!==S[deck].vidId&&!isCompilation(i.snippet.title));
             valid.push(...items);
-          } catch(e){}
+          } catch(e){ console.warn('[SPINLAB] YT search failed for',a,t,e); }
           if(valid.length>=6) break;
         }
         if(valid.length>=2){
-          recsCache[deck]=valid;
-          setRecsBadge('lastfm');
+          recsCache[deck]=valid; setRecsBadge('lastfm');
           if(deck===recsActive) renderRecs(valid,deck);
           return;
         }
       }
-    } catch(e){ console.warn('Last.fm failed',e); }
+    } catch(e){ console.warn('[SPINLAB] Last.fm error:',e); }
   }
 
-  // YouTube fallback — single search
+  // YouTube fallback — try artist name first, then broader title keywords
   try{
-    const {artist}=parseTitle(S[deck].title);
-    const r=await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${encodeURIComponent(artist+' songs')}&type=video&videoCategoryId=10&key=${YT_KEY}`);
+    // use just the artist name for a clean search
+    const q=artist.length>2 ? artist+' official music video' : S[deck].title.split(' ').slice(0,3).join(' ');
+    console.log('[SPINLAB] YT fallback query:',q);
+    const r=await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=12&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&key=${YT_KEY}`);
     const d=await r.json();
+    console.log('[SPINLAB] YT fallback items:',(d.items||[]).length);
     if(!d.items||!d.items.length){ showRecsMsg('No recommendations found'); return; }
     const filtered=d.items.filter(i=>i.id?.videoId&&i.snippet&&i.id.videoId!==S[deck].vidId&&!isCompilation(i.snippet.title));
-    recsCache[deck]=filtered.length?filtered:d.items.filter(i=>i.id?.videoId&&i.snippet);
-    setRecsBadge('youtube');
-    if(deck===recsActive) renderRecs(recsCache[deck],deck);
-  } catch(e){ showRecsMsg('Could not load recommendations'); }
+    const toShow=filtered.length>=2?filtered:d.items.filter(i=>i.id?.videoId&&i.snippet&&i.id.videoId!==S[deck].vidId);
+    if(!toShow.length){ showRecsMsg('No recommendations found'); return; }
+    recsCache[deck]=toShow; setRecsBadge('youtube');
+    if(deck===recsActive) renderRecs(toShow,deck);
+  } catch(e){ showRecsMsg('Could not load recommendations'); console.warn('[SPINLAB] fallback error:',e); }
 }
 
 function renderRecs(items,deck){
