@@ -552,6 +552,7 @@ document.getElementById('search-b').addEventListener('keydown', e=>{ if(e.key===
 
 // ── LOAD TRACK ────────────────────────────────────────────────
 function loadTrack(deck, vidId, title){
+  title = decodeHtml(title);
   const s = S[deck];
   s.vidId=vidId; s.title=title; s.bpm=null; s.looping=false; s.cuePoint=0;
   s.artColors=randColors(); s.thumbImg=null;
@@ -836,7 +837,14 @@ function renderCrates(){
 const EXCLUDE=['mixtape','compilation','best of','greatest hits','playlist','vol.','megamix','nonstop','non-stop',' hour',' hours','classics','collection','top 10','top 20','top 50','top 100'];
 function isCompilation(t){ return EXCLUDE.some(w=>t.toLowerCase().includes(w)); }
 
+function decodeHtml(str){
+  const t=document.createElement('textarea');
+  t.innerHTML=str;
+  return t.value;
+}
+
 function parseTitle(title){
+  title=decodeHtml(title);
   const parts=title.split(/\s[–\-]\s/);
   const clean=s=>s.replace(/\(.*?\)/g,'').replace(/\[.*?\]/g,'').replace(/\bft\.?\b|\bfeat\.?\b|\bofficial\b|\bvideo\b|\blyrics\b|\baudio\b|\bhd\b|\b4k\b|\bexplicit\b|\bremix\b|\bremastered\b/gi,'').replace(/\s+/g,' ').trim();
   if(parts.length>=2) return {artist:clean(parts[0]),track:clean(parts[1])};
