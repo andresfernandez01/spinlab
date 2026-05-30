@@ -902,9 +902,8 @@ function switchRecs(deck){
   else showRecsMsg('Load a track on Deck '+deck.toUpperCase()+' to see recommendations');
 }
 
-// extract a smart search query from a track title — finds similar tracks, not the same song
+// extract a smart search query from a track title — finds similar individual tracks
 function recsQuery(title){
-  // common separators between artist and song: –, -, |
   const separators = /\s[–\-|]\s/;
   let artist = '', song = '';
   const parts = title.split(separators);
@@ -912,41 +911,55 @@ function recsQuery(title){
     artist = parts[0].trim();
     song   = parts[1].trim();
   } else {
-    // no separator — treat first 2 words as artist
     const words = title.split(' ');
     artist = words.slice(0,2).join(' ');
     song   = words.slice(2).join(' ');
   }
 
-  // clean each part — strip (Official Video), [Lyrics], ft., feat. etc
   const clean = s => s
     .replace(/\(.*?\)/g,'').replace(/\[.*?\]/g,'')
     .replace(/\bft\.?\b|\bfeat\.?\b|\bofficial\b|\bvideo\b|\blyrics\b|\baudio\b|\bhd\b|\b4k\b|\bexplicit\b|\bremix\b|\bremastered\b/gi,'')
     .replace(/\s+/g,' ').trim();
 
   const cleanArtist = clean(artist);
-  const cleanSong   = clean(song);
 
-  // genre/mood hints based on known artists — fallback is just "similar artists mix"
+  // genre hints — search for tracks in same genre, not compilations
   const genreHints = {
-    'outkast':'90s hip hop southern rap','dr dre':'west coast hip hop','eminem':'rap hip hop',
-    'kendrick':'conscious rap hip hop','jay z':'hip hop rap','kanye':'hip hop soul',
-    'beyonce':'rnb soul pop','adele':'soul pop ballad','radiohead':'alternative rock',
-    'the beatles':'classic rock 60s','rolling stones':'classic rock','nirvana':'grunge rock 90s',
-    'daft punk':'electronic dance french','deadmau5':'electronic progressive house',
-    'calvin harris':'edm dance pop','drake':'rnb hip hop trap','rihanna':'pop rnb',
+    'outkast':'andre 3000 big boi hip hop',
+    'dr dre':'west coast hip hop snoop dogg',
+    'eminem':'rap hip hop slim shady',
+    'kendrick':'lamar conscious rap',
+    'jay z':'hip hop rap new york',
+    'kanye':'hip hop soul rap',
+    'beyonce':'rnb soul pop',
+    'adele':'soul pop ballad',
+    'radiohead':'alternative rock indie',
+    'the beatles':'classic rock 60s british',
+    'rolling stones':'classic rock british',
+    'nirvana':'grunge rock 90s',
+    'daft punk':'electronic french house',
+    'deadmau5':'electronic progressive house',
+    'calvin harris':'edm dance pop',
+    'drake':'rnb hip hop toronto',
+    'rihanna':'pop rnb barbados',
+    'frank ocean':'rnb soul alternative',
+    'amy winehouse':'soul jazz rnb',
+    'arctic monkeys':'indie rock british',
   };
   const artistKey = cleanArtist.toLowerCase().replace(/[^a-z ]/g,'').trim();
   const genreHint = Object.keys(genreHints).find(k=>artistKey.includes(k));
-  const genre = genreHint ? genreHints[genreHint] : '';
+  const genre = genreHint ? genreHints[genreHint] : cleanArtist;
 
-  // build query: artist name + genre/similar — deliberately exclude the song name
-  // so we get different tracks
-  const q = genre
-    ? `${cleanArtist} ${genre} mix`
-    : `similar to ${cleanArtist} ${cleanSong.split(' ').slice(0,2).join(' ')} mix`;
+  // search for individual songs — no "mix" or "compilation" language
+  return `${genre} songs`;
+}
 
-  return q;
+// words that indicate compilations/mixes to exclude
+const EXCLUDE_WORDS = ['mixtape','compilation','mix |','| mix','best of','greatest hits','playlist','vol.','vol ','episode','megamix','nonstop','non-stop','hour','hours','classics','collection'];
+
+function isCompilation(title){
+  const t = title.toLowerCase();
+  return EXCLUDE_WORDS.some(w=>t.includes(w));
 }
 
 async function fetchRecs(deck){
@@ -962,17 +975,16 @@ async function fetchRecs(deck){
     const r=await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&key=${YT_KEY}`);
     const d=await r.json();
     if(!d.items||!d.items.length) return;
-    // filter out the currently playing video and any results with same title keywords
     const playingWords = S[deck].title.toLowerCase().replace(/\(.*?\)|\[.*?\]/g,'').split(' ').filter(w=>w.length>3).slice(0,4);
     const filtered = d.items.filter(i=>{
       if(!i.id||!i.id.videoId||!i.snippet) return false;
       if(i.id.videoId===S[deck].vidId) return false;
-      // skip if result title shares 3+ words with playing track (likely same song)
+      if(isCompilation(i.snippet.title)) return false;
       const rTitle = i.snippet.title.toLowerCase();
       const overlap = playingWords.filter(w=>rTitle.includes(w)).length;
       return overlap < 3;
     });
-    recsCache[deck]=filtered.length ? filtered : d.items.filter(i=>i.id&&i.id.videoId&&i.snippet&&i.id.videoId!==S[deck].vidId);
+    recsCache[deck]=filtered.length ? filtered : d.items.filter(i=>i.id&&i.id.videoId&&i.snippet&&i.id.videoId!==S[deck].vidId&&!isCompilation(i.snippet.title));
     if(deck===recsActive) renderRecs(recsCache[deck],deck);
   } catch(e){ console.warn('Recs error',e); }
 }
@@ -1109,7 +1121,7 @@ async function autoLoadNext(deck, srcDeck){
     const r = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=6&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&key=${YT_KEY}`);
     const d = await r.json();
     if(!d.items||!d.items.length) return false;
-    const valid = d.items.filter(i=>i.id&&i.id.videoId&&i.snippet&&i.id.videoId!==S[srcDeck].vidId);
+    const valid = d.items.filter(i=>i.id&&i.id.videoId&&i.snippet&&i.id.videoId!==S[srcDeck].vidId&&!isCompilation(i.snippet.title));
     if(!valid.length) return false;
     const pick = valid[Math.floor(Math.random()*Math.min(3,valid.length))];
     recsCache[srcDeck] = valid;
