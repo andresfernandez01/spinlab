@@ -254,26 +254,32 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
       <div class="settings-label">YOUTUBE DATA API v3 KEY</div>
       <div class="settings-desc">Required for track search. Get a free key at <a href="https://console.cloud.google.com" target="_blank" class="settings-link">console.cloud.google.com</a> → APIs &amp; Services → Credentials.</div>
       <div class="api-row">
-        <input type="password" id="api-key-input" class="api-input" placeholder="Paste your API key here...">
+        <input type="password" id="api-key-input" class="api-input" placeholder="Paste your YouTube API key...">
         <button class="api-toggle" id="api-toggle">Show</button>
       </div>
       <div class="api-status" id="api-status"></div>
     </div>
     <div class="settings-section">
-      <div class="settings-label">HOW TO GET A KEY</div>
+      <div class="settings-label">LAST.FM API KEY</div>
+      <div class="settings-desc">Powers smart track recommendations. Get a free key at <a href="https://www.last.fm/api/account/create" target="_blank" class="settings-link">last.fm/api/account/create</a> — just needs a name and email.</div>
+      <div class="api-row">
+        <input type="password" id="lfm-key-input" class="api-input" placeholder="Paste your Last.fm API key...">
+        <button class="api-toggle" id="lfm-toggle">Show</button>
+      </div>
+      <div class="api-status" id="lfm-status"></div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-label">HOW TO GET YOUR KEYS</div>
       <ol class="settings-steps">
-        <li>Go to <a href="https://console.cloud.google.com" target="_blank" class="settings-link">console.cloud.google.com</a></li>
-        <li>Create or select a project</li>
-        <li>APIs &amp; Services → Library → enable <strong>YouTube Data API v3</strong></li>
-        <li>Credentials → Create Credentials → API Key</li>
-        <li>Paste it above and click Save</li>
+        <li><strong>YouTube:</strong> <a href="https://console.cloud.google.com" target="_blank" class="settings-link">console.cloud.google.com</a> → APIs &amp; Services → Credentials → Create API Key → restrict to YouTube Data API v3</li>
+        <li><strong>Last.fm:</strong> <a href="https://www.last.fm/api/account/create" target="_blank" class="settings-link">last.fm/api/account/create</a> → fill in name &amp; email → copy the API key shown</li>
       </ol>
     </div>
     <div class="settings-footer">
-      <div class="settings-note">Your key is stored locally in your browser only — never sent anywhere except YouTube's API.</div>
+      <div class="settings-note">Both keys are stored locally in your browser only — never sent anywhere except their respective APIs.</div>
       <div class="footer-btns">
         <button class="btn-cancel" id="settings-cancel">CANCEL</button>
-        <button class="btn-save" id="settings-save">SAVE KEY</button>
+        <button class="btn-save" id="settings-save">SAVE KEYS</button>
       </div>
     </div>
   </div>
@@ -485,9 +491,11 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 <script>
 (function(){
 
-const FAV_KEY  = 'spinlab-favs';
+const FAV_KEY   = 'spinlab-favs';
 const YTKEY_KEY = 'spinlab-yt-key';
-let YT_KEY = localStorage.getItem(YTKEY_KEY) || '';
+const LFMKEY_KEY= 'spinlab-lfm-key';
+let YT_KEY  = localStorage.getItem(YTKEY_KEY)  || '';
+let LFM_KEY = localStorage.getItem(LFMKEY_KEY) || '';
 
 // ── STATE ─────────────────────────────────────────────────────
 const S = {
@@ -504,39 +512,52 @@ let recsTimer = {a:null,b:null};
 // ── SETTINGS ──────────────────────────────────────────────────
 function openSettings(){
   document.getElementById('settings-overlay').classList.add('open');
-  const inp = document.getElementById('api-key-input');
-  inp.value = YT_KEY; inp.type = 'password';
-  document.getElementById('api-toggle').textContent = 'Show';
-  const st = document.getElementById('api-status');
-  if(YT_KEY){ st.className='api-status ok'; st.textContent='✓ Key loaded ('+YT_KEY.slice(0,8)+'...)'; }
-  else { st.className='api-status warn'; st.textContent='No key set yet.'; }
+  const inp=document.getElementById('api-key-input'); inp.value=YT_KEY; inp.type='password';
+  document.getElementById('api-toggle').textContent='Show';
+  const st=document.getElementById('api-status');
+  if(YT_KEY){st.className='api-status ok';st.textContent='✓ Key loaded ('+YT_KEY.slice(0,8)+'...)';}
+  else{st.className='api-status warn';st.textContent='No key set yet.';}
+  const lfmInp=document.getElementById('lfm-key-input'); lfmInp.value=LFM_KEY; lfmInp.type='password';
+  document.getElementById('lfm-toggle').textContent='Show';
+  const lfmSt=document.getElementById('lfm-status');
+  if(LFM_KEY){lfmSt.className='api-status ok';lfmSt.textContent='✓ Key loaded ('+LFM_KEY.slice(0,8)+'...)';}
+  else{lfmSt.className='api-status warn';lfmSt.textContent='No key set — recommendations will use YouTube fallback.';}
 }
 function closeSettings(){ document.getElementById('settings-overlay').classList.remove('open'); }
 function saveSettings(){
-  const val = document.getElementById('api-key-input').value.trim();
-  const st  = document.getElementById('api-status');
-  if(!val){ st.className='api-status err'; st.textContent='Please paste a key first.'; return; }
-  YT_KEY = val;
-  localStorage.setItem(YTKEY_KEY, val);
-  st.className = 'api-status ok';
-  st.textContent = '✓ Saved!';
+  const ytVal=document.getElementById('api-key-input').value.trim();
+  const lfmVal=document.getElementById('lfm-key-input').value.trim();
+  const st=document.getElementById('api-status');
+  const lfmSt=document.getElementById('lfm-status');
+  if(!ytVal){st.className='api-status err';st.textContent='Please paste a YouTube key first.';return;}
+  YT_KEY=ytVal; localStorage.setItem(YTKEY_KEY,ytVal);
+  st.className='api-status ok'; st.textContent='✓ Saved!';
+  if(lfmVal){
+    LFM_KEY=lfmVal; localStorage.setItem(LFMKEY_KEY,lfmVal);
+    lfmSt.className='api-status ok'; lfmSt.textContent='✓ Saved!';
+  }
   checkKeyBanner();
-  setTimeout(closeSettings, 700);
+  setTimeout(closeSettings,700);
 }
-function checkKeyBanner(){ document.getElementById('no-key-banner').style.display = YT_KEY ? 'none' : 'flex'; }
+function checkKeyBanner(){ document.getElementById('no-key-banner').style.display=YT_KEY?'none':'flex'; }
 
-document.getElementById('settings-open-btn').addEventListener('click', openSettings);
-document.getElementById('no-key-open-btn').addEventListener('click', openSettings);
-document.getElementById('settings-close').addEventListener('click', closeSettings);
-document.getElementById('settings-cancel').addEventListener('click', closeSettings);
-document.getElementById('settings-save').addEventListener('click', saveSettings);
-document.getElementById('settings-overlay').addEventListener('click', function(e){ if(e.target===this) closeSettings(); });
-document.getElementById('api-toggle').addEventListener('click', function(){
-  const inp = document.getElementById('api-key-input');
-  if(inp.type==='password'){ inp.type='text'; this.textContent='Hide'; }
-  else { inp.type='password'; this.textContent='Show'; }
+document.getElementById('settings-open-btn').addEventListener('click',openSettings);
+document.getElementById('no-key-open-btn').addEventListener('click',openSettings);
+document.getElementById('settings-close').addEventListener('click',closeSettings);
+document.getElementById('settings-cancel').addEventListener('click',closeSettings);
+document.getElementById('settings-save').addEventListener('click',saveSettings);
+document.getElementById('settings-overlay').addEventListener('click',function(e){if(e.target===this)closeSettings();});
+document.getElementById('api-toggle').addEventListener('click',function(){
+  const inp=document.getElementById('api-key-input');
+  if(inp.type==='password'){inp.type='text';this.textContent='Hide';}
+  else{inp.type='password';this.textContent='Show';}
 });
-document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeSettings(); });
+document.getElementById('lfm-toggle').addEventListener('click',function(){
+  const inp=document.getElementById('lfm-key-input');
+  if(inp.type==='password'){inp.type='text';this.textContent='Hide';}
+  else{inp.type='password';this.textContent='Show';}
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSettings();});
 
 // ── YOUTUBE API ───────────────────────────────────────────────
 window.onYouTubeIframeAPIReady = function(){
@@ -908,63 +929,47 @@ function switchRecs(deck){
 }
 
 // extract a smart search query from a track title — finds similar individual tracks
-function recsQuery(title){
-  const separators = /\s[–\-|]\s/;
-  let artist = '', song = '';
-  const parts = title.split(separators);
-  if(parts.length >= 2){
-    artist = parts[0].trim();
-    song   = parts[1].trim();
-  } else {
-    const words = title.split(' ');
-    artist = words.slice(0,2).join(' ');
-    song   = words.slice(2).join(' ');
-  }
-
+// ── HELPERS ───────────────────────────────────────────────────
+function parseTrackTitle(title){
+  // split "Artist - Song" or "Artist – Song"
+  const sep = /\s[–\-]\s/;
+  const parts = title.split(sep);
   const clean = s => s
     .replace(/\(.*?\)/g,'').replace(/\[.*?\]/g,'')
     .replace(/\bft\.?\b|\bfeat\.?\b|\bofficial\b|\bvideo\b|\blyrics\b|\baudio\b|\bhd\b|\b4k\b|\bexplicit\b|\bremix\b|\bremastered\b/gi,'')
     .replace(/\s+/g,' ').trim();
-
-  const cleanArtist = clean(artist);
-
-  // genre hints — search for tracks in same genre, not compilations
-  const genreHints = {
-    'outkast':'andre 3000 big boi hip hop',
-    'dr dre':'west coast hip hop snoop dogg',
-    'eminem':'rap hip hop slim shady',
-    'kendrick':'lamar conscious rap',
-    'jay z':'hip hop rap new york',
-    'kanye':'hip hop soul rap',
-    'beyonce':'rnb soul pop',
-    'adele':'soul pop ballad',
-    'radiohead':'alternative rock indie',
-    'the beatles':'classic rock 60s british',
-    'rolling stones':'classic rock british',
-    'nirvana':'grunge rock 90s',
-    'daft punk':'electronic french house',
-    'deadmau5':'electronic progressive house',
-    'calvin harris':'edm dance pop',
-    'drake':'rnb hip hop toronto',
-    'rihanna':'pop rnb barbados',
-    'frank ocean':'rnb soul alternative',
-    'amy winehouse':'soul jazz rnb',
-    'arctic monkeys':'indie rock british',
-  };
-  const artistKey = cleanArtist.toLowerCase().replace(/[^a-z ]/g,'').trim();
-  const genreHint = Object.keys(genreHints).find(k=>artistKey.includes(k));
-  const genre = genreHint ? genreHints[genreHint] : cleanArtist;
-
-  // search for individual songs — no "mix" or "compilation" language
-  return `${genre} songs`;
+  if(parts.length>=2) return {artist:clean(parts[0]), track:clean(parts[1])};
+  // no separator — whole thing is title, guess artist from first 2 words
+  const words = clean(title).split(' ');
+  return {artist:words.slice(0,2).join(' '), track:words.slice(2).join(' ')||clean(title)};
 }
 
-// words that indicate compilations/mixes to exclude
-const EXCLUDE_WORDS = ['mixtape','compilation','mix |','| mix','best of','greatest hits','playlist','vol.','vol ','episode','megamix','nonstop','non-stop','hour','hours','classics','collection'];
+const EXCLUDE_WORDS=['mixtape','compilation','best of','greatest hits','playlist','vol.','megamix','nonstop','non-stop',' hour',' hours','classics','collection','top 10','top 20','top 50','top 100'];
+function isCompilation(title){ const t=title.toLowerCase(); return EXCLUDE_WORDS.some(w=>t.includes(w)); }
 
-function isCompilation(title){
-  const t = title.toLowerCase();
-  return EXCLUDE_WORDS.some(w=>t.includes(w));
+// ── LAST.FM RECOMMENDATIONS ───────────────────────────────────
+async function fetchRecsLastFm(deck){
+  const {artist,track} = parseTrackTitle(S[deck].title);
+  // 1. get similar tracks from Last.fm
+  const lfmUrl = `https://ws.audioscrobbler.com/2.0/?method=track.getSimilar&artist=${encodeURIComponent(artist)}&track=${encodeURIComponent(track)}&api_key=${LFM_KEY}&format=json&limit=12&autocorrect=1`;
+  const lfmRes = await fetch(lfmUrl);
+  const lfmData = await lfmRes.json();
+  const similar = lfmData?.similartracks?.track;
+  if(!similar||!similar.length) throw new Error('No Last.fm results');
+  // pick top 8 similar tracks
+  return similar.slice(0,8).map(t=>({
+    artist: t.artist?.name||'',
+    track:  t.name||'',
+    url:    t.url||''
+  }));
+}
+
+async function ytSearchForTrack(artist, track){
+  const q = `${artist} ${track} official`;
+  const r = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=3&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&key=${YT_KEY}`);
+  const d = await r.json();
+  const items = (d.items||[]).filter(i=>i.id?.videoId&&i.snippet&&!isCompilation(i.snippet.title));
+  return items[0]||null;
 }
 
 async function fetchRecs(deck){
@@ -975,23 +980,35 @@ async function fetchRecs(deck){
     showRecsMsg('Finding related tracks...');
     document.getElementById('recs-source').textContent='based on: '+S[deck].title.slice(0,45)+(S[deck].title.length>45?'…':'');
   }
+
+  // ── Last.fm path ──────────────────────────────────────────
+  if(LFM_KEY){
+    try{
+      const similar = await fetchRecsLastFm(deck);
+      // for each Last.fm result, find a YouTube video in parallel (max 8)
+      const results = await Promise.all(
+        similar.map(s=>ytSearchForTrack(s.artist,s.track).catch(()=>null))
+      );
+      const valid = results.filter(r=>r&&r.id?.videoId!==S[deck].vidId);
+      if(valid.length){
+        recsCache[deck]=valid;
+        if(deck===recsActive) renderRecs(valid,deck);
+        return;
+      }
+    } catch(e){ console.warn('Last.fm recs failed, falling back',e); }
+  }
+
+  // ── YouTube fallback ──────────────────────────────────────
   try{
-    const q = recsQuery(S[deck].title);
+    const {artist} = parseTrackTitle(S[deck].title);
+    const q = `${artist} songs`;
     const r=await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&key=${YT_KEY}`);
     const d=await r.json();
     if(!d.items||!d.items.length) return;
-    const playingWords = S[deck].title.toLowerCase().replace(/\(.*?\)|\[.*?\]/g,'').split(' ').filter(w=>w.length>3).slice(0,4);
-    const filtered = d.items.filter(i=>{
-      if(!i.id||!i.id.videoId||!i.snippet) return false;
-      if(i.id.videoId===S[deck].vidId) return false;
-      if(isCompilation(i.snippet.title)) return false;
-      const rTitle = i.snippet.title.toLowerCase();
-      const overlap = playingWords.filter(w=>rTitle.includes(w)).length;
-      return overlap < 3;
-    });
-    recsCache[deck]=filtered.length ? filtered : d.items.filter(i=>i.id&&i.id.videoId&&i.snippet&&i.id.videoId!==S[deck].vidId&&!isCompilation(i.snippet.title));
-    if(deck===recsActive) renderRecs(recsCache[deck],deck);
-  } catch(e){ console.warn('Recs error',e); }
+    const filtered=d.items.filter(i=>i.id?.videoId&&i.snippet&&i.id.videoId!==S[deck].vidId&&!isCompilation(i.snippet.title));
+    recsCache[deck]=filtered;
+    if(deck===recsActive) renderRecs(filtered,deck);
+  } catch(e){ console.warn('Recs fallback error',e); }
 }
 
 function showRecsMsg(msg){
@@ -1112,25 +1129,35 @@ async function triggerFade(){
 }
 
 async function autoLoadNext(deck, srcDeck){
-  // try recommendations cache first
-  const cache = recsCache[srcDeck];
-  if(cache && cache.length){
-    const pick = cache[Math.floor(Math.random()*Math.min(3,cache.length))];
-    loadTrack(deck, pick.id.videoId, pick.snippet.title);
+  // try cache first
+  const cache=recsCache[srcDeck];
+  if(cache&&cache.length){
+    const pick=cache[Math.floor(Math.random()*Math.min(3,cache.length))];
+    loadTrack(deck,pick.id.videoId,pick.snippet.title);
     return true;
   }
-  // fetch by title keywords
-  if(!S[srcDeck].title || !YT_KEY) return false;
+  if(!S[srcDeck].title||!YT_KEY) return false;
+  // try Last.fm path
+  if(LFM_KEY){
+    try{
+      const similar=await fetchRecsLastFm(srcDeck);
+      if(similar&&similar.length){
+        const pick=similar[Math.floor(Math.random()*Math.min(3,similar.length))];
+        const yt=await ytSearchForTrack(pick.artist,pick.track);
+        if(yt){ loadTrack(deck,yt.id.videoId,yt.snippet.title); return true; }
+      }
+    } catch(e){ console.warn('autoLoadNext Last.fm failed',e); }
+  }
+  // YouTube fallback
   try{
-    const q = recsQuery(S[srcDeck].title);
-    const r = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=6&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&key=${YT_KEY}`);
-    const d = await r.json();
+    const {artist}=parseTrackTitle(S[srcDeck].title);
+    const r=await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=6&q=${encodeURIComponent(artist+' songs')}&type=video&videoCategoryId=10&key=${YT_KEY}`);
+    const d=await r.json();
     if(!d.items||!d.items.length) return false;
-    const valid = d.items.filter(i=>i.id&&i.id.videoId&&i.snippet&&i.id.videoId!==S[srcDeck].vidId&&!isCompilation(i.snippet.title));
+    const valid=d.items.filter(i=>i.id?.videoId&&i.snippet&&i.id.videoId!==S[srcDeck].vidId&&!isCompilation(i.snippet.title));
     if(!valid.length) return false;
-    const pick = valid[Math.floor(Math.random()*Math.min(3,valid.length))];
-    recsCache[srcDeck] = valid;
-    loadTrack(deck, pick.id.videoId, pick.snippet.title);
+    const pick=valid[Math.floor(Math.random()*Math.min(3,valid.length))];
+    loadTrack(deck,pick.id.videoId,pick.snippet.title);
     return true;
   } catch(e){ return false; }
 }
