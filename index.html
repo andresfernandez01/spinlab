@@ -562,7 +562,7 @@ function loadTrack(deck, vidId, title){
   document.getElementById('cue-'+deck).style.display='none';
   document.getElementById('results-'+deck).innerHTML='';
   loadThumb(deck, vidId);
-  if(s.player&&s.player.loadVideoById) s.player.loadVideoById(vidId);
+  if(s.player&&s.player.cueVideoById) s.player.cueVideoById(vidId);
   updateFavBtn(deck);
   // switch recs to this deck and fetch fresh
   recsCache[deck]=null;
