@@ -581,8 +581,6 @@ function onYTState(e,deck){
     document.getElementById('led-'+deck).classList.add('on');
     if(!s.bpm) detectBPM(deck);
     drawWF(deck);
-    clearTimeout(recsTimer[deck]);
-    recsTimer[deck]=setTimeout(()=>fetchRecs(deck),1500);
   } else {
     s.playing=false;
     document.getElementById('play-'+deck).textContent='▶';
@@ -636,6 +634,18 @@ function loadTrack(deck,vidId,title){
   loadThumb(deck,vidId);
   if(s.player&&s.player.loadVideoById) s.player.loadVideoById(vidId);
   updateFavBtn(deck);
+  // clear stale cache and schedule a fresh recs fetch
+  recsCache[deck]=null;
+  clearTimeout(recsTimer[deck]);
+  recsTimer[deck]=setTimeout(()=>{
+    // update source label immediately if this deck is active
+    if(deck===recsActive){
+      showRecsMsg('Finding related tracks...');
+      document.getElementById('recs-source').textContent='based on: '+title.slice(0,45)+(title.length>45?'…':'');
+      document.getElementById('recs-panel').style.display='block';
+    }
+    fetchRecs(deck);
+  },1200);
 }
 
 // ── PLAYBACK ──────────────────────────────────────────────────
