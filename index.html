@@ -228,6 +228,17 @@ input[type=range].master::-webkit-slider-thumb{-webkit-appearance:none;width:14p
 .recs-msg{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);padding:14px 0;text-align:center;font-style:italic;grid-column:1/-1}
 
 #yt-container{position:fixed;top:-9999px;left:-9999px;width:320px;height:180px}
+.autofade-section{width:100%;display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--border);padding-top:12px;margin-top:2px}
+.fade-time-row{display:flex;align-items:center;gap:6px;width:100%;margin-bottom:4px}
+.fade-time-label{font-family:"Barlow Condensed",sans-serif;font-size:9px;letter-spacing:2px;color:var(--muted);font-weight:600;white-space:nowrap}
+input[type=range].fade-time-slider{flex:1;height:3px;background:var(--groove);border-radius:2px;border:1px solid var(--border)}
+input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:18px;border-radius:2px;background:linear-gradient(180deg,#4a4a4a,#2e2e2e);border:1px solid var(--border)}
+.fade-time-val{font-family:"DM Mono",monospace;font-size:9px;color:var(--muted);min-width:24px;text-align:right}
+.fade-btn{width:100%;height:32px;border-radius:3px;background:linear-gradient(180deg,#363636,#272727);border:1px solid var(--border);border-bottom:2px solid #111;font-family:"Barlow Condensed",sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;color:var(--orange);cursor:pointer;transition:all .08s}
+.fade-btn:hover{color:var(--text);border-color:var(--border2)}
+.fade-btn:active{transform:translateY(1px);border-bottom-width:1px}
+.fade-btn.fading{background:linear-gradient(180deg,#1a3a28,#0a2018);border-color:#4caf80;border-bottom-color:#2a6a48;color:#4caf80}
+.fade-status{text-align:center;font-family:"DM Mono",monospace;font-size:8px;color:var(--muted);min-height:12px;letter-spacing:1px}
 </style>
 </head>
 <body>
@@ -371,6 +382,16 @@ input[type=range].master::-webkit-slider-thumb{-webkit-appearance:none;width:14p
       <div class="mx-label">MASTER</div>
       <input type="range" class="master" id="master-vol" min="0" max="100" value="80">
       <div class="master-val" id="master-val">80</div>
+    </div>
+    <div class="autofade-section">
+      <div class="mx-label">AUTO FADE</div>
+      <div class="fade-time-row">
+        <span class="fade-time-label">TIME</span>
+        <input type="range" class="fade-time-slider" id="fade-time" min="3" max="60" value="5" step="1">
+        <span class="fade-time-val" id="fade-time-val">5s</span>
+      </div>
+      <button class="fade-btn" id="fade-btn">⇄ FADE NOW</button>
+      <div class="fade-status" id="fade-status"></div>
     </div>
   </div>
 
@@ -881,8 +902,20 @@ function switchRecs(deck){
   else showRecsMsg('Load a track on Deck '+deck.toUpperCase()+' to see recommendations');
 }
 
+// extract a smart search query from a track title
+function recsQuery(title){
+  // strip common noise: (Official Video), [Lyrics], ft., feat. parentheticals etc
+  const clean = title
+    .replace(/\(.*?\)/g,'').replace(/\[.*?\]/g,'')
+    .replace(/ft\.?|feat\.?|official|video|lyrics|audio|hd|4k|explicit/gi,'')
+    .replace(/[-–|]/g,' ').replace(/\s+/g,' ').trim();
+  // take first 4-5 meaningful words
+  const words = clean.split(' ').filter(w=>w.length>1).slice(0,5);
+  return words.join(' ') + ' music';
+}
+
 async function fetchRecs(deck){
-  const vidId=S[deck].vidId; if(!vidId||!YT_KEY) return;
+  if(!S[deck].vidId||!YT_KEY) return;
   recsCache[deck]=null;
   if(deck===recsActive){
     document.getElementById('recs-panel').style.display='block';
@@ -890,10 +923,13 @@ async function fetchRecs(deck){
     document.getElementById('recs-source').textContent='based on: '+S[deck].title.slice(0,45)+(S[deck].title.length>45?'…':'');
   }
   try{
-    const r=await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=8&relatedToVideoId=${vidId}&type=video&key=${YT_KEY}`);
+    const q = recsQuery(S[deck].title);
+    const r=await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&key=${YT_KEY}`);
     const d=await r.json();
     if(!d.items||!d.items.length) return;
-    recsCache[deck]=d.items.filter(i=>i.id&&i.id.videoId&&i.snippet);
+    // filter out the currently playing video from results
+    const filtered = d.items.filter(i=>i.id&&i.id.videoId&&i.snippet&&i.id.videoId!==S[deck].vidId);
+    recsCache[deck]=filtered;
     if(deck===recsActive) renderRecs(recsCache[deck],deck);
   } catch(e){ console.warn('Recs error',e); }
 }
@@ -946,6 +982,97 @@ function mainLoop(){
   });
   updateVU();
   requestAnimationFrame(mainLoop);
+}
+
+// ── AUTO FADE ─────────────────────────────────────────────────
+let fadeInterval = null;
+let fadeDuration = 5; // seconds
+
+document.getElementById('fade-time').addEventListener('input', function(){
+  fadeDuration = parseInt(this.value);
+  document.getElementById('fade-time-val').textContent = fadeDuration + 's';
+});
+
+document.getElementById('fade-btn').addEventListener('click', triggerFade);
+
+async function triggerFade(){
+  // work out which deck is playing (source) and which is destination
+  const src  = S.a.playing ? 'a' : S.b.playing ? 'b' : null;
+  const dest = src === 'a' ? 'b' : 'a';
+  const btn  = document.getElementById('fade-btn');
+  const status = document.getElementById('fade-status');
+
+  if(!src){ status.textContent = 'PLAY A TRACK FIRST'; return; }
+  if(fadeInterval){ clearInterval(fadeInterval); fadeInterval=null; btn.classList.remove('fading'); btn.textContent='⇄ FADE NOW'; status.textContent='CANCELLED'; return; }
+
+  // if dest deck has no track, auto-load a recommendation
+  if(!S[dest].vidId){
+    status.textContent = 'LOADING NEXT TRACK...';
+    const loaded = await autoLoadNext(dest, src);
+    if(!loaded){ status.textContent = 'NO TRACK ON DECK '+dest.toUpperCase()+' — LOAD ONE FIRST'; return; }
+    // give player a moment to initialise then start playing
+    await new Promise(r=>setTimeout(r,1200));
+    if(S[dest].player) S[dest].player.playVideo();
+    await new Promise(r=>setTimeout(r,800));
+  } else if(!S[dest].playing){
+    // track loaded but paused — start it
+    if(S[dest].player) S[dest].player.playVideo();
+    await new Promise(r=>setTimeout(r,600));
+  }
+
+  // read current xfader position
+  const xfEl = document.getElementById('xfader');
+  const startXF = parseInt(xfEl.value);
+  const targetXF = dest === 'b' ? 100 : 0; // fade toward dest deck
+  const steps = fadeDuration * 20; // 20 steps per second
+  let step = 0;
+
+  btn.classList.add('fading');
+  btn.textContent = '■ STOP FADE';
+
+  fadeInterval = setInterval(()=>{
+    step++;
+    const progress = step / steps;
+    const eased = progress < 0.5 ? 2*progress*progress : 1-Math.pow(-2*progress+2,2)/2; // ease in-out
+    const newXF = Math.round(startXF + (targetXF - startXF) * eased);
+    xfEl.value = newXF;
+    updateXF(newXF);
+
+    const remaining = Math.ceil((steps - step) / 20);
+    status.textContent = 'FADING → DECK '+dest.toUpperCase()+' · '+remaining+'s';
+
+    if(step >= steps){
+      clearInterval(fadeInterval); fadeInterval = null;
+      btn.classList.remove('fading'); btn.textContent = '⇄ FADE NOW';
+      status.textContent = '✓ FADED TO DECK '+dest.toUpperCase();
+      // pause the source deck
+      if(S[src].player) S[src].player.pauseVideo();
+    }
+  }, 1000/20);
+}
+
+async function autoLoadNext(deck, srcDeck){
+  // try recommendations cache first
+  const cache = recsCache[srcDeck];
+  if(cache && cache.length){
+    const pick = cache[Math.floor(Math.random()*Math.min(3,cache.length))];
+    loadTrack(deck, pick.id.videoId, pick.snippet.title);
+    return true;
+  }
+  // fetch by title keywords
+  if(!S[srcDeck].title || !YT_KEY) return false;
+  try{
+    const q = recsQuery(S[srcDeck].title);
+    const r = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=6&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&key=${YT_KEY}`);
+    const d = await r.json();
+    if(!d.items||!d.items.length) return false;
+    const valid = d.items.filter(i=>i.id&&i.id.videoId&&i.snippet&&i.id.videoId!==S[srcDeck].vidId);
+    if(!valid.length) return false;
+    const pick = valid[Math.floor(Math.random()*Math.min(3,valid.length))];
+    recsCache[srcDeck] = valid;
+    loadTrack(deck, pick.id.videoId, pick.snippet.title);
+    return true;
+  } catch(e){ return false; }
 }
 
 // ── BOOT ──────────────────────────────────────────────────────
