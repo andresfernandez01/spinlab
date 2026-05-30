@@ -461,9 +461,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
       <span class="panel-title">★ CRATES</span>
       <span class="panel-sub" id="crates-count">0 tracks</span>
     </div>
-    <div class="crates-grid" id="crates-grid">
-      <div class="crates-empty" id="crates-empty">No favourites yet — star a track to save it</div>
-    </div>
+    <div class="crates-grid" id="crates-grid"></div>
   </div>
 </div>
 
@@ -871,10 +869,17 @@ document.getElementById('fav-np-a').addEventListener('click',()=>{ if(S.a.vidId)
 document.getElementById('fav-np-b').addEventListener('click',()=>{ if(S.b.vidId) toggleFav(S.b.vidId,S.b.title); });
 
 function renderCrates(){
-  const grid=document.getElementById('crates-grid'),empty=document.getElementById('crates-empty');
+  const grid=document.getElementById('crates-grid');
   document.getElementById('crates-count').textContent=favs.length+(favs.length===1?' track':' tracks');
-  if(!favs.length){ grid.innerHTML=''; grid.appendChild(empty); empty.style.display='block'; return; }
-  empty.style.display='none'; grid.innerHTML='';
+  // always wipe and rebuild — never move the empty element, just use innerHTML for it
+  grid.innerHTML='';
+  if(!favs.length){
+    const empty=document.createElement('div');
+    empty.className='crates-empty';
+    empty.textContent='No favourites yet — star a track to save it';
+    grid.appendChild(empty);
+    return;
+  }
   [...favs].reverse().forEach(f=>{
     const row=document.createElement('div'); row.className='crate-row';
     const star=document.createElement('span'); star.className='crate-star'; star.textContent='★';
