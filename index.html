@@ -188,12 +188,14 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 .queue-count{font-family:'DM Mono',monospace;font-size:8px;color:var(--muted)}
 .queue-clear{background:none;border:none;color:var(--muted);font-family:'DM Mono',monospace;font-size:9px;cursor:pointer;padding:0}
 .queue-clear:hover{color:#e83a1a}
-.queue-list{max-height:110px;overflow-y:auto;display:flex;flex-direction:column}
+.queue-list{max-height:162px;overflow-y:auto;display:flex;flex-direction:column}
 .queue-list::-webkit-scrollbar{width:3px}
 .queue-list::-webkit-scrollbar-thumb{background:var(--border2)}
 .queue-item{display:flex;align-items:center;gap:6px;padding:5px 8px;border-bottom:1px solid var(--border);font-size:10px;cursor:pointer;transition:background .1s}
 .queue-item:hover{background:rgba(232,101,26,0.08)}
 .queue-item:last-child{border-bottom:none}
+.queue-item.played{opacity:0.45}
+.queue-item.played .queue-name{color:var(--muted);text-decoration:line-through}
 .queue-pos{font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);min-width:14px;text-align:center}
 .queue-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
 .queue-rm{background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;padding:0;flex-shrink:0}
@@ -243,7 +245,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v1.2</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v1.3</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -535,6 +537,8 @@ function loadTrack(deck, vidId, title) {
   loadThumb(deck, vidId);
   if (s.player && s.player.cueVideoById) s.player.cueVideoById(vidId);
   updateFavBtn(deck);
+  // mark this track as played in the queue
+  markPlayed(deck, vidId);
   // switch recs panel to this deck and fetch
   recsCache[deck] = null;
   clearTimeout(recsTimer[deck]);
@@ -1009,12 +1013,12 @@ function autoLoadNext(deck,srcDeck,cb) {
 }
 
 // ── QUEUES ────────────────────────────────────────────────────
+// each item: {vid, title, played: bool}
 var queues = {a:[], b:[]};
 
 function addToQueue(deck, vid, title) {
-  // don't add duplicates
-  if (queues[deck].some(function(t){return t.vid===vid;})) return;
-  queues[deck].push({vid:vid, title:title});
+  if (queues[deck].some(function(t){return t.vid===vid&&!t.played;})) return;
+  queues[deck].push({vid:vid, title:title, played:false});
   renderQueue(deck);
 }
 
@@ -1028,20 +1032,21 @@ function clearQueue(deck) {
   renderQueue(deck);
 }
 
+function markPlayed(deck, vid) {
+  queues[deck].forEach(function(t){ if(t.vid===vid) t.played=true; });
+  renderQueue(deck);
+}
 
 function shiftQueue(deck) {
-  // load the next track from queue onto the deck
-  if (!queues[deck].length) return false;
-  var next = queues[deck].shift();
+  var next = queues[deck].find(function(t){return !t.played;});
+  if (!next) return false;
   loadTrack(deck, next.vid, next.title);
-  renderQueue(deck);
   return true;
 }
 
 $('queue-clear-a').addEventListener('click', function(){clearQueue('a');});
 $('queue-clear-b').addEventListener('click', function(){clearQueue('b');});
 
-// helper to make a queue button for any context
 function makeQBtn(deck, vid, title) {
   var btn = document.createElement('button');
   btn.className = 'q-btn';
@@ -1063,21 +1068,27 @@ function renderQueue(deck) {
   var list  = $('queue-list-'+deck);
   var count = $('queue-count-'+deck);
   var q = queues[deck];
-  count.textContent = q.length + (q.length===1?' track':' tracks');
+  var unplayed = q.filter(function(t){return !t.played;}).length;
+  count.textContent = unplayed+' up'+(q.length-unplayed>0?' · '+(q.length-unplayed)+' played':'');
   panel.style.display = q.length ? 'flex' : 'none';
   list.innerHTML = '';
   if (!q.length) { var e=document.createElement('div');e.className='queue-empty';e.textContent='Queue is empty';list.appendChild(e);return; }
+  var upNum=0;
   q.forEach(function(track, i) {
-    var item=document.createElement('div'); item.className='queue-item';
-    var pos=document.createElement('span'); pos.className='queue-pos'; pos.textContent=(i+1)+'.';
+    var item=document.createElement('div');
+    item.className = 'queue-item' + (track.played?' played':'');
+    var pos=document.createElement('span'); pos.className='queue-pos';
+    if (track.played) { pos.textContent='✓'; }
+    else { upNum++; pos.textContent=upNum+'.'; }
     var name=document.createElement('span'); name.className='queue-name'; name.textContent=track.title; name.title=track.title;
-    var load=document.createElement('button'); load.className='q-btn'; load.textContent='LOAD'; load.style.color='var(--orange)'; load.style.borderColor='var(--orange)';
+    var load=document.createElement('button'); load.className='q-btn'; load.textContent='LOAD';
+    load.style.color = track.played?'var(--muted)'  :'var(--orange)';
+    load.style.borderColor = track.played?'var(--border2)':'var(--orange)';
     var rm=document.createElement('button'); rm.className='queue-rm'; rm.textContent='✕';
-    // load button
     (function(t, idx, d) {
       load.addEventListener('click', function(e) {
         e.stopPropagation();
-        queues[d].splice(idx, 1);
+        t.played = false;
         loadTrack(d, t.vid, t.title);
         renderQueue(d);
       });
@@ -1089,6 +1100,9 @@ function renderQueue(deck) {
     item.appendChild(pos); item.appendChild(name); item.appendChild(load); item.appendChild(rm);
     list.appendChild(item);
   });
+  // scroll first unplayed into view
+  var first = list.querySelector('.queue-item:not(.played)');
+  if (first) first.scrollIntoView({block:'nearest'});
 }
 function mainLoop() {
   ['a','b'].forEach(function(deck) {
