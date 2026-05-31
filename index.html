@@ -919,10 +919,11 @@ function prepFade(src,dest,btn,status) {
   }
 }
 
-function startFade(src,dest,btn,status) {
+function startFade(src, dest, btn, status, overrideDuration) {
   var xfEl=$('xfader');
   var startXF=parseInt(xfEl.value), targetXF=dest==='b'?100:0;
-  var steps=fadeDuration*20, step=0;
+  var dur = overrideDuration || fadeDuration;
+  var steps=dur*20, step=0;
   btn.classList.add('fading'); btn.textContent='■ STOP FADE';
   fadeInterval=setInterval(function() {
     step++;
@@ -934,6 +935,8 @@ function startFade(src,dest,btn,status) {
       clearInterval(fadeInterval); fadeInterval=null;
       btn.classList.remove('fading'); btn.textContent='⇄ FADE NOW';
       status.textContent='✓ FADED TO DECK '+dest.toUpperCase();
+      // reset auto-fade triggered so it watches the new deck
+      S[dest].autoFadeTriggered = false;
       if (S[src].player) S[src].player.pauseVideo();
     }
   },1000/20);
@@ -967,12 +970,26 @@ function mainLoop() {
       if (s.looping&&cur>=s.loopEnd) s.player.seekTo(s.loopStart,true);
 
       // auto-fade: trigger when remaining time <= fadeDuration
-      if (autoFadeEnabled && !fadeInterval && !s.looping && !s.autoFadeTriggered) {
+      if (autoFadeEnabled && !fadeInterval && !s.looping && !s.autoFadeTriggered && dur > 0) {
         var remaining = dur - cur;
-        if (remaining > 0 && remaining <= fadeDuration) {
+        if (remaining > 0 && remaining <= fadeDuration + 1) {
           s.autoFadeTriggered = true;
-          $('fade-status').textContent = 'AUTO FADING from Deck '+deck.toUpperCase()+'...';
-          triggerFade();
+          var dest = deck==='a'?'b':'a';
+          $('fade-status').textContent = 'AUTO FADING → DECK '+dest.toUpperCase()+'...';
+          // if dest has no track, load one first then start fade
+          if (!S[dest].vidId) {
+            autoLoadNext(dest, deck, function(ok) {
+              if (ok) {
+                setTimeout(function() {
+                  if (S[dest].player) S[dest].player.playVideo();
+                  setTimeout(function() { startFade(deck, dest, $('fade-btn'), $('fade-status')); }, 800);
+                }, 1200);
+              }
+            });
+          } else {
+            if (!S[dest].playing && S[dest].player) S[dest].player.playVideo();
+            setTimeout(function() { startFade(deck, dest, $('fade-btn'), $('fade-status')); }, 300);
+          }
         }
       }
 
