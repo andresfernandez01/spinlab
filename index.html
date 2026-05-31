@@ -444,6 +444,7 @@ function onYTS(e, deck) {
     s.playing=false;
     $(('play-'+deck)).textContent='▶'; $(('play-'+deck)).classList.remove('on');
     $(('led-'+deck)).classList.remove('on');
+    s.autoFadeTriggered = false;
   }
 }
 
@@ -935,8 +936,9 @@ function startFade(src, dest, btn, status, overrideDuration) {
       clearInterval(fadeInterval); fadeInterval=null;
       btn.classList.remove('fading'); btn.textContent='⇄ FADE NOW';
       status.textContent='✓ FADED TO DECK '+dest.toUpperCase();
-      // reset auto-fade triggered so it watches the new deck
-      S[dest].autoFadeTriggered = false;
+      // reset both decks so auto-fade watches the new playing deck
+      S.a.autoFadeTriggered = false;
+      S.b.autoFadeTriggered = false;
       if (S[src].player) S[src].player.pauseVideo();
     }
   },1000/20);
