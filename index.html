@@ -243,7 +243,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v1.0</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v1.1</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -1070,19 +1070,22 @@ function renderQueue(deck) {
     var item=document.createElement('div'); item.className='queue-item';
     var pos=document.createElement('span'); pos.className='queue-pos'; pos.textContent=(i+1)+'.';
     var name=document.createElement('span'); name.className='queue-name'; name.textContent=track.title; name.title=track.title;
+    var load=document.createElement('button'); load.className='q-btn'; load.textContent='LOAD'; load.style.color='var(--orange)'; load.style.borderColor='var(--orange)';
     var rm=document.createElement('button'); rm.className='queue-rm'; rm.textContent='✕';
-    rm.addEventListener('click', (function(idx){return function(e){e.stopPropagation();removeFromQueue(deck,idx);};})(i));
-    // clicking the track row loads it onto the deck immediately
-    item.style.cursor='pointer';
+    // load button
     (function(t, idx, d) {
-      item.addEventListener('click', function(e) {
-        if (e.target === rm) return;
+      load.addEventListener('click', function(e) {
+        e.stopPropagation();
         queues[d].splice(idx, 1);
         loadTrack(d, t.vid, t.title);
         renderQueue(d);
       });
+      rm.addEventListener('click', function(e) {
+        e.stopPropagation();
+        removeFromQueue(d, idx);
+      });
     })(track, i, deck);
-    item.appendChild(pos); item.appendChild(name); item.appendChild(rm);
+    item.appendChild(pos); item.appendChild(name); item.appendChild(load); item.appendChild(rm);
     list.appendChild(item);
   });
 }
