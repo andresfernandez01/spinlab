@@ -245,7 +245,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v1.3</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v1.5</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -483,8 +483,9 @@ function onYTS(e, deck) {
     $(('play-'+deck)).textContent='▶'; $(('play-'+deck)).classList.remove('on');
     $(('led-'+deck)).classList.remove('on');
     s.autoFadeTriggered = false;
-    // if track ended naturally (not paused by fade), load next from queue
+    // if track ended naturally, mark as played then load next from queue
     if (e.data === YT.PlayerState.ENDED) {
+      if (s.vidId) markPlayed(deck, s.vidId);
       setTimeout(function() { shiftQueue(deck); }, 500);
     }
   }
@@ -537,8 +538,6 @@ function loadTrack(deck, vidId, title) {
   loadThumb(deck, vidId);
   if (s.player && s.player.cueVideoById) s.player.cueVideoById(vidId);
   updateFavBtn(deck);
-  // mark this track as played in the queue
-  markPlayed(deck, vidId);
   // switch recs panel to this deck and fetch
   recsCache[deck] = null;
   clearTimeout(recsTimer[deck]);
@@ -988,8 +987,9 @@ function startFade(src, dest, btn, status, overrideDuration) {
       // reset both decks so auto-fade watches the new playing deck
       S.a.autoFadeTriggered = false;
       S.b.autoFadeTriggered = false;
+      // mark source track as played since it was faded out
+      if (S[src].vidId) markPlayed(src, S[src].vidId);
       if (S[src].player) S[src].player.pauseVideo();
-      // load next queued track on source deck ready for next mix
       setTimeout(function() { shiftQueue(src); }, 800);
     }
   },1000/20);
