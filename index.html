@@ -505,10 +505,9 @@ function doSearch(deck) {
         var sp=document.createElement('span'); sp.className='result-title'; sp.textContent=ttl;
         var star=document.createElement('span'); star.className='ri-star'+(isFav(vid)?' on':''); star.textContent='★';
         star.addEventListener('click', function(e) { e.stopPropagation(); toggleFav(vid,ttl); star.classList.toggle('on',isFav(vid)); });
-        var qa = makeQBtn('a', vid, ttl);
-        var qb = makeQBtn('b', vid, ttl);
-        div.appendChild(sp); div.appendChild(qa); div.appendChild(qb); div.appendChild(star);
-        div.addEventListener('click', function(e) { if (e.target!==star&&e.target!==qa&&e.target!==qb) loadTrack(deck,vid,ttl); });
+        var q = makeQBtn(deck, vid, ttl);
+        div.appendChild(sp); div.appendChild(q); div.appendChild(star);
+        div.addEventListener('click', function(e) { if (e.target!==star&&e.target!==q) loadTrack(deck,vid,ttl); });
         res.appendChild(div);
       });
     })
@@ -1027,25 +1026,6 @@ function clearQueue(deck) {
   renderQueue(deck);
 }
 
-function renderQueue(deck) {
-  var panel = $('queue-panel-'+deck);
-  var list  = $('queue-list-'+deck);
-  var count = $('queue-count-'+deck);
-  var q = queues[deck];
-  count.textContent = q.length + (q.length===1?' track':' tracks');
-  panel.style.display = q.length ? 'flex' : 'none';
-  list.innerHTML = '';
-  if (!q.length) { var e=document.createElement('div');e.className='queue-empty';e.textContent='Queue is empty';list.appendChild(e);return; }
-  q.forEach(function(track, i) {
-    var item=document.createElement('div'); item.className='queue-item';
-    var pos=document.createElement('span'); pos.className='queue-pos'; pos.textContent=(i+1)+'.';
-    var name=document.createElement('span'); name.className='queue-name'; name.textContent=track.title; name.title=track.title;
-    var rm=document.createElement('button'); rm.className='queue-rm'; rm.textContent='✕';
-    rm.addEventListener('click', (function(idx){return function(){removeFromQueue(deck,idx);};})(i));
-    item.appendChild(pos); item.appendChild(name); item.appendChild(rm);
-    list.appendChild(item);
-  });
-}
 
 function shiftQueue(deck) {
   // load the next track from queue onto the deck
@@ -1063,18 +1043,45 @@ $('queue-clear-b').addEventListener('click', function(){clearQueue('b');});
 function makeQBtn(deck, vid, title) {
   var btn = document.createElement('button');
   btn.className = 'q-btn';
-  btn.textContent = '+Q '+(deck==='a'?'A':'B');
+  btn.textContent = '+Q';
   btn.title = 'Add to Deck '+deck.toUpperCase()+' queue';
   btn.addEventListener('click', function(e) {
     e.stopPropagation();
     addToQueue(deck, vid, title);
-    // brief flash to confirm
-    btn.textContent = '✓ Q'+deck.toUpperCase();
+    btn.textContent = '✓';
     btn.style.color = 'var(--green)';
     btn.style.borderColor = 'var(--green)';
-    setTimeout(function(){btn.textContent='+Q '+(deck==='a'?'A':'B');btn.style.color='';btn.style.borderColor='';},800);
+    setTimeout(function(){btn.textContent='+Q';btn.style.color='';btn.style.borderColor='';},800);
   });
   return btn;
+}
+
+function renderQueue(deck) {
+  var panel = $('queue-panel-'+deck);
+  var list  = $('queue-list-'+deck);
+  var count = $('queue-count-'+deck);
+  var q = queues[deck];
+  count.textContent = q.length + (q.length===1?' track':' tracks');
+  panel.style.display = q.length ? 'flex' : 'none';
+  list.innerHTML = '';
+  if (!q.length) { var e=document.createElement('div');e.className='queue-empty';e.textContent='Queue is empty';list.appendChild(e);return; }
+  q.forEach(function(track, i) {
+    var item=document.createElement('div'); item.className='queue-item';
+    var pos=document.createElement('span'); pos.className='queue-pos'; pos.textContent=(i+1)+'.';
+    var name=document.createElement('span'); name.className='queue-name'; name.textContent=track.title; name.title=track.title;
+    var rm=document.createElement('button'); rm.className='queue-rm'; rm.textContent='✕';
+    rm.addEventListener('click', (function(idx){return function(e){e.stopPropagation();removeFromQueue(deck,idx);};})(i));
+    // clicking the track row loads it onto the deck immediately
+    item.style.cursor='pointer';
+    item.addEventListener('click', (function(t,idx){return function(e){
+      if(e.target===rm) return;
+      loadTrack(deck,t.vid,t.title);
+      queues[deck].splice(idx,1);
+      renderQueue(deck);
+    };})(track,i));
+    item.appendChild(pos); item.appendChild(name); item.appendChild(rm);
+    list.appendChild(item);
+  });
 }
 function mainLoop() {
   ['a','b'].forEach(function(deck) {
