@@ -191,7 +191,8 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 .queue-list{max-height:110px;overflow-y:auto;display:flex;flex-direction:column}
 .queue-list::-webkit-scrollbar{width:3px}
 .queue-list::-webkit-scrollbar-thumb{background:var(--border2)}
-.queue-item{display:flex;align-items:center;gap:6px;padding:5px 8px;border-bottom:1px solid var(--border);font-size:10px}
+.queue-item{display:flex;align-items:center;gap:6px;padding:5px 8px;border-bottom:1px solid var(--border);font-size:10px;cursor:pointer;transition:background .1s}
+.queue-item:hover{background:rgba(232,101,26,0.08)}
 .queue-item:last-child{border-bottom:none}
 .queue-pos{font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);min-width:14px;text-align:center}
 .queue-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
@@ -1073,12 +1074,14 @@ function renderQueue(deck) {
     rm.addEventListener('click', (function(idx){return function(e){e.stopPropagation();removeFromQueue(deck,idx);};})(i));
     // clicking the track row loads it onto the deck immediately
     item.style.cursor='pointer';
-    item.addEventListener('click', (function(t,idx){return function(e){
-      if(e.target===rm) return;
-      loadTrack(deck,t.vid,t.title);
-      queues[deck].splice(idx,1);
-      renderQueue(deck);
-    };})(track,i));
+    (function(t, idx, d) {
+      item.addEventListener('click', function(e) {
+        if (e.target === rm) return;
+        queues[d].splice(idx, 1);
+        loadTrack(d, t.vid, t.title);
+        renderQueue(d);
+      });
+    })(track, i, deck);
     item.appendChild(pos); item.appendChild(name); item.appendChild(rm);
     list.appendChild(item);
   });
