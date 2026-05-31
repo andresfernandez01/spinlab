@@ -243,7 +243,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v1.1</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v1.2</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -469,7 +469,8 @@ function mkPlayer(id, deck) {
 function onYTS(e, deck) {
   var s = S[deck];
   if (e.data === YT.PlayerState.PLAYING) {
-    s.playing=true; s.duration=s.player.getDuration();
+    s.playing=true;
+    s.duration=s.player.getDuration();
     $(('play-'+deck)).textContent='⏸'; $(('play-'+deck)).classList.add('on');
     $(('dur-'+deck)).textContent=fmt(s.duration);
     $(('led-'+deck)).classList.add('on');
@@ -1095,7 +1096,9 @@ function mainLoop() {
     if (s.artColors) { if(s.playing) s.angle+=0.008; drawArt(deck); }
     if (!s.player||!s.playing) return;
     try {
-      var cur=s.player.getCurrentTime(),dur=s.duration; if(!dur) return;
+      var cur=s.player.getCurrentTime(),dur=s.duration||s.player.getDuration()||0; if(!dur) return;
+      // keep duration updated
+      if (!s.duration && dur) s.duration = dur;
       if (s.looping&&cur>=s.loopEnd) s.player.seekTo(s.loopStart,true);
 
       // auto-fade: trigger when remaining time <= fadeDuration
@@ -1105,7 +1108,6 @@ function mainLoop() {
           s.autoFadeTriggered = true;
           var dest = deck==='a'?'b':'a';
           $('fade-status').textContent = 'AUTO FADING → DECK '+dest.toUpperCase()+'...';
-          // if dest has no track, load one first then start fade
           if (!S[dest].vidId) {
             autoLoadNext(dest, deck, function(ok) {
               if (ok) {
