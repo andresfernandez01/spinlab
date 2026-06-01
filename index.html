@@ -124,6 +124,9 @@ input[type=range].tempo::-webkit-slider-thumb,input[type=range].vol::-webkit-sli
 .queue-item:last-child{border-bottom:none}
 .queue-item.played{opacity:0.4}
 .queue-item.played .queue-name{text-decoration:line-through;color:var(--muted)}
+.queue-drag{color:var(--border2);cursor:grab;font-size:12px;flex-shrink:0;padding:0 2px;user-select:none}
+.queue-drag:hover{color:var(--muted)}
+.queue-item.drag-over{border-top:2px solid var(--orange);}
 .queue-pos{font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);min-width:14px;text-align:center;flex-shrink:0}
 .queue-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
 .queue-rm{background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;padding:0;flex-shrink:0}
@@ -237,7 +240,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v2.1</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v2.2</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -613,8 +616,12 @@ function renderQueue(deck){
   list.innerHTML='';
   if(!q.length){var e=document.createElement('div');e.className='queue-empty';e.textContent='Queue is empty';list.appendChild(e);return;}
   var upNum=0;
+  var dragSrc=null;
   q.forEach(function(track,i){
     var item=document.createElement('div');item.className='queue-item'+(track.played?' played':'');
+    item.draggable=true;
+    // drag handle
+    var handle=document.createElement('span');handle.className='queue-drag';handle.textContent='⠿';handle.title='Drag to reorder';
     var pos=document.createElement('span');pos.className='queue-pos';
     if(track.played){pos.textContent='✓';}else{upNum++;pos.textContent=upNum+'.';}
     var name=document.createElement('span');name.className='queue-name';name.textContent=track.title;name.title=track.title;
@@ -626,7 +633,35 @@ function renderQueue(deck){
       load.addEventListener('click',function(e){e.stopPropagation();t.played=false;loadTrack(d,t.vid,t.title);renderQueue(d);});
       rm.addEventListener('click',function(e){e.stopPropagation();removeFromQueue(d,idx);});
     })(track,i,deck);
-    item.appendChild(pos);item.appendChild(name);item.appendChild(load);item.appendChild(rm);
+    // drag events
+    (function(idx,d){
+      item.addEventListener('dragstart',function(e){
+        dragSrc=idx;
+        e.dataTransfer.effectAllowed='move';
+        item.style.opacity='0.4';
+      });
+      item.addEventListener('dragend',function(){
+        item.style.opacity='';
+        list.querySelectorAll('.queue-item').forEach(function(el){el.classList.remove('drag-over');});
+      });
+      item.addEventListener('dragover',function(e){
+        e.preventDefault();
+        e.dataTransfer.dropEffect='move';
+        item.classList.add('drag-over');
+      });
+      item.addEventListener('dragleave',function(){item.classList.remove('drag-over');});
+      item.addEventListener('drop',function(e){
+        e.preventDefault();
+        item.classList.remove('drag-over');
+        if(dragSrc===null||dragSrc===idx) return;
+        // reorder queue
+        var moved=queues[d].splice(dragSrc,1)[0];
+        queues[d].splice(idx,0,moved);
+        dragSrc=null;
+        renderQueue(d);
+      });
+    })(i,deck);
+    item.appendChild(handle);item.appendChild(pos);item.appendChild(name);item.appendChild(load);item.appendChild(rm);
     list.appendChild(item);
   });
   var first=list.querySelector('.queue-item:not(.played)');
