@@ -240,7 +240,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v2.7</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v2.8</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -425,7 +425,9 @@ $('lfm-toggle').addEventListener('click',function(){var i=$('lfm-input');i.type=
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closeSettings();});
 
 // ── YOUTUBE ──────────────────────────────────────────────────
-window.onYouTubeIframeAPIReady=function(){S.a.player=mkPlayer('yt-a','a');S.b.player=mkPlayer('yt-b','b');};
+window.onYouTubeIframeAPIReady=function(){
+  if(window._spinlabPlayers) window._spinlabPlayers();
+};
 function mkPlayer(id,deck){return new YT.Player(id,{height:'180',width:'320',playerVars:{controls:0,disablekb:1,fs:0,iv_load_policy:3,modestbranding:1,playsinline:1},events:{onStateChange:function(e){onYTS(e,deck);}}});}
 function onYTS(e,deck){
   var s=S[deck];
@@ -975,6 +977,10 @@ function mainLoop(){
 
 // ── BOOT ─────────────────────────────────────────────────────
 function boot(){buildVU();initKnobs();initArt('a');initArt('b');updateXF(50);applyVols();loadFavs();checkBanner();mainLoop();if(!YT_KEY&&!API_URL)setTimeout(openSettings,600);if(API_URL){fetch(API_URL+'/health').catch(function(){});}}
+// expose player init globally so onYouTubeIframeAPIReady can reach it
+window._spinlabPlayers = function(){S.a.player=mkPlayer('yt-a','a');S.b.player=mkPlayer('yt-b','b');};
+// if API already loaded (e.g. cached), call init directly
+if(window.YT&&window.YT.Player) window._spinlabPlayers();
 var tag=document.createElement('script');tag.src='https://www.youtube.com/iframe_api';document.head.appendChild(tag);
 window.addEventListener('load',boot);
 if(document.readyState==='complete')boot();
