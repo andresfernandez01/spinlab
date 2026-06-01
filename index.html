@@ -230,7 +230,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v1.8</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v1.9</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -627,7 +627,7 @@ function fetchRecs(deck){
     .then(function(lfmD){
       var similar=lfmD&&lfmD.similartracks&&lfmD.similartracks.track;
       if(!similar||similar.length<2){showRecsMsg('No similar tracks found on Last.fm');return;}
-      var items=similar.slice(0,10).map(function(t){return{lfm:true,artist:t.artist&&t.artist.name?t.artist.name:'',track:t.name||'',img:t.image&&t.image[1]&&t.image[1]['#text']?t.image[1]['#text']:'',url:t.url||''};});
+      var items=similar.slice(0,10).map(function(t){var imgs=t.image||[];var img=imgs.length?imgs[imgs.length-1]['#text']||'':'';return{lfm:true,artist:t.artist&&t.artist.name?t.artist.name:'',track:t.name||'',img:img,url:t.url||''};});
       recsCache[deck]=items;setRecsBadge('lastfm');
       if(deck===recsActive)renderRecs(items);
     })
@@ -655,6 +655,7 @@ function renderRecs(items){
   items.forEach(function(item){
     var card=document.createElement('div');card.className='rec-card';
     if(item.lfm){
+      if(item.img){var img=document.createElement('img');img.className='rec-thumb';img.src=item.img;img.alt=item.track;card.appendChild(img);}
       var info=document.createElement('div');info.className='rec-info';info.style.padding='10px';
       var ttl=document.createElement('div');ttl.className='rec-title';ttl.textContent=item.track;ttl.style.fontWeight='500';
       var ch=document.createElement('div');ch.className='rec-ch';ch.textContent=item.artist;ch.style.marginTop='4px';
