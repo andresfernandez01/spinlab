@@ -84,7 +84,7 @@ body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;min-
 .track-sub{font-size:9px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace}
 .fav-np{background:none;border:none;cursor:pointer;font-size:16px;color:var(--muted);padding:0;flex-shrink:0}
 .fav-np:hover,.fav-np.on{color:var(--orange)}
-.wf-wrap{height:80px;background:var(--groove);border:1px solid var(--border);border-radius:3px;position:relative;cursor:pointer;overflow:hidden}
+.wf-wrap{height:44px;background:var(--groove);border:1px solid var(--border);border-radius:3px;position:relative;cursor:pointer;overflow:hidden}
 canvas.wf{width:100%;height:100%;display:block}
 .wf-head{position:absolute;top:0;left:50%;width:1px;height:100%;background:rgba(255,255,255,0.35);pointer-events:none}
 .cue-mark{position:absolute;top:0;width:2px;height:100%;background:var(--orange);display:none;pointer-events:none}
@@ -136,10 +136,8 @@ input[type=range].tempo::-webkit-slider-thumb,input[type=range].vol::-webkit-sli
 .q-btn:hover{color:var(--orange);border-color:var(--orange)}
 .mixer{background:var(--panel2);display:flex;flex-direction:column;align-items:center;gap:12px;padding:14px 10px;border-top:2px solid var(--orange)}
 .mx-label{font-family:'Barlow Condensed',sans-serif;font-size:9px;letter-spacing:3px;color:var(--muted);font-weight:600;text-align:center}
-.vu-wrap{display:flex;gap:3px;align-items:flex-end;height:70px}
-.vu-col{display:flex;flex-direction:column;gap:1px;justify-content:flex-end;height:100%}
-.vu-seg{width:10px;height:5px;border-radius:1px;background:var(--groove)}
-.vu-seg.g{background:#4caf80}.vu-seg.am{background:#e8a01a}.vu-seg.rd{background:#e83a1a}
+.vu-wrap{width:100%;height:70px;display:block}
+.vu-wrap canvas{display:block;width:100%;height:100%}
 .xf-section{width:100%;display:flex;flex-direction:column;gap:4px}
 .xf-labels{display:flex;justify-content:space-between;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:600;letter-spacing:2px;color:var(--orange)}
 input[type=range].xfader{width:100%;height:5px;background:var(--groove);border-radius:2px;border:1px solid var(--border)}
@@ -240,7 +238,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v2.3</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v2.5</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -552,141 +550,152 @@ function drawKnob(id,value){var c=$(('knob-'+id));if(!c)return;var ctx=c.getCont
 function initKnobs(){Object.keys(knobs).forEach(function(id){drawKnob(id,0);var c=$(('knob-'+id)),drag=false,sy=0,sv=0;c.addEventListener('mousedown',function(e){drag=true;sy=e.clientY;sv=knobs[id];e.preventDefault();});window.addEventListener('mousemove',function(e){if(!drag)return;knobs[id]=Math.max(-12,Math.min(12,sv+(sy-e.clientY)/2));drawKnob(id,knobs[id]);$(('kv-'+id)).textContent=(knobs[id]>=0?'+':'')+knobs[id].toFixed(1);});window.addEventListener('mouseup',function(){drag=false;});c.addEventListener('dblclick',function(){knobs[id]=0;drawKnob(id,0);$(('kv-'+id)).textContent='0';});});}
 
 // ── WAVEFORM ────────────────────────────────────────────────
-// ── WINAMP VISUALISER ────────────────────────────────────────
-var vis = {
-  a: {bars:[], peaks:[], beatPhase:0, lastBeat:0, energy:0},
-  b: {bars:[], peaks:[], beatPhase:0, lastBeat:0, energy:0}
-};
-var VIS_BARS = 32;
+// ── STATIC WAVEFORM ──────────────────────────────────────────
+var wfData = {a:[], b:[]};
 
-function initVis(deck) {
-  var v = vis[deck];
-  v.bars  = [];
-  v.peaks = [];
-  for (var i=0;i<VIS_BARS;i++) { v.bars.push(0); v.peaks.push(0); }
+function generateWFData(deck) {
+  // generate a pseudo-realistic waveform shape for the track
+  var bars = 200;
+  var data = [];
+  var phase = Math.random() * Math.PI * 2;
+  var phase2 = Math.random() * Math.PI * 2;
+  for (var i=0; i<bars; i++) {
+    var t = i / bars;
+    // intro builds up, outro fades
+    var envelope = t < 0.05 ? t/0.05 : t > 0.90 ? (1-t)/0.10 : 1.0;
+    // verses quieter, choruses louder — rough 8-bar sections
+    var section = Math.sin(t * Math.PI * 8) * 0.15;
+    // layered waves for organic look
+    var wave = 0.45
+      + 0.25 * Math.abs(Math.sin(t * Math.PI * 32 + phase))
+      + 0.15 * Math.abs(Math.sin(t * Math.PI * 17 + phase2))
+      + 0.10 * Math.random()
+      + section;
+    data.push(Math.min(1, Math.max(0.04, wave * envelope)));
+  }
+  wfData[deck] = data;
 }
 
 function drawWF(deck) {
-  // called once when track loads — just init, animation handles drawing
-  initVis(deck);
+  generateWFData(deck);
+  renderWF(deck, 0);
 }
 
-function updateVis(deck) {
+function renderWF(deck, progress) {
   var c = $(('wf-'+deck)); if(!c) return;
-  var s = S[deck];
-  var v = vis[deck];
-  var w = c.offsetWidth||400, h = 80;
+  var data = wfData[deck]; if(!data||!data.length) return;
+  var w = c.offsetWidth||400, h = 44;
   if (c.width!==w||c.height!==h) { c.width=w; c.height=h; }
   var ctx = c.getContext('2d');
-
-  // background
   ctx.fillStyle = '#181818';
   ctx.fillRect(0,0,w,h);
 
-  if (!s.playing && !s.vidId) return;
+  var bars = data.length;
+  var barW = w / bars;
 
-  var now = Date.now();
-  var bpm = s.bpm || 120;
-  var beatInterval = (60/bpm)*1000;
+  for (var i=0; i<bars; i++) {
+    var e = data[i];
+    var bh = e * h * 0.92;
+    var x = i * barW;
+    var played = (i/bars) < progress;
 
-  // detect beat pulse
-  var timeSinceBeat = now - v.lastBeat;
-  var isBeat = timeSinceBeat >= beatInterval;
-  if (isBeat) { v.lastBeat = now - (timeSinceBeat % beatInterval); }
+    // colour — bass (left) red-orange, mid orange, treble (right) yellow
+    var pos = i/bars;
+    var r,g,b;
+    if (pos < 0.3) { r=220; g=Math.floor(40+e*80); b=10; }       // red-orange
+    else if (pos < 0.65) { r=232; g=Math.floor(90+e*60); b=20; } // orange
+    else { r=220; g=Math.floor(180+e*55); b=20; }                 // yellow
 
-  // beat phase 0→1
-  var beatPos = (timeSinceBeat % beatInterval) / beatInterval;
-  var beatPulse = isBeat ? 1.0 : Math.max(0, 1 - beatPos * 2.5);
-
-  // overall energy — higher when playing
-  var targetEnergy = s.playing ? 0.6 + beatPulse * 0.4 : 0.05;
-  v.energy += (targetEnergy - v.energy) * 0.15;
-
-  var barW = Math.floor(w / VIS_BARS);
-  var gap  = 1;
-
-  for (var i=0; i<VIS_BARS; i++) {
-    // frequency profile — bass (low i) higher, treble (high i) lower
-    var freqProfile = i < 4  ? 0.95 :   // sub-bass
-                      i < 8  ? 0.85 :   // bass
-                      i < 14 ? 0.65 :   // low-mid
-                      i < 20 ? 0.50 :   // mid
-                      i < 26 ? 0.35 :   // high-mid
-                               0.20;    // treble
-
-    // add beat kick to bass bars
-    var kick = (i < 6) ? beatPulse * 0.5 : 0;
-
-    // random noise per bar
-    var noise = (Math.random() - 0.5) * 0.25;
-
-    // target height
-    var target = v.energy * (freqProfile + kick + noise);
-    target = Math.max(0, Math.min(1, target));
-
-    // smooth toward target — attack fast, decay slower
-    var speed = target > v.bars[i] ? 0.45 : 0.12;
-    v.bars[i] += (target - v.bars[i]) * speed;
-
-    // peak dot — falls slowly
-    if (v.bars[i] >= v.peaks[i]) {
-      v.peaks[i] = v.bars[i];
-    } else {
-      v.peaks[i] -= 0.008;
-      if (v.peaks[i] < 0) v.peaks[i] = 0;
-    }
-
-    var bh   = Math.floor(v.bars[i]  * (h - 2));
-    var ph   = Math.floor(v.peaks[i] * (h - 2));
-    var x    = i * barW;
-    var barX = x + Math.floor(gap/2);
-    var bw   = barW - gap;
-
-    // colour by frequency band
-    var norm = v.bars[i];
-    if (i < 8) {
-      // bass — red to orange
-      var r=220, g=Math.floor(30 + norm*80), b=10;
-      ctx.fillStyle='rgb('+r+','+g+','+b+')';
-    } else if (i < 20) {
-      // mid — orange
-      var r2=232, g2=Math.floor(80+norm*60), b2=20;
-      ctx.fillStyle='rgb('+r2+','+g2+','+b2+')';
-    } else {
-      // treble — yellow
-      var r3=220, g3=Math.floor(180+norm*60), b3=20;
-      ctx.fillStyle='rgb('+r3+','+g3+','+b3+')';
-    }
-
-    // draw bar from bottom up
-    if (bh > 0) ctx.fillRect(barX, h-bh, bw, bh);
-
-    // peak dot
-    if (ph > 0) {
-      ctx.fillStyle = 'rgba(255,255,255,0.7)';
-      ctx.fillRect(barX, h-ph-2, bw, 2);
-    }
+    var alpha = played ? 1.0 : 0.35;
+    ctx.fillStyle='rgba('+r+','+g+','+b+','+alpha+')';
+    ctx.fillRect(x, (h-bh)/2, Math.max(1,barW-0.5), bh);
   }
 
-  // playhead line
-  if (s.duration && s.playing) {
-    try {
-      var cur = s.player.getCurrentTime();
-      var px = Math.floor((cur/s.duration)*w);
-      ctx.fillStyle = 'rgba(255,255,255,0.4)';
-      ctx.fillRect(px, 0, 1, h);
-    } catch(e){}
-  }
+  // playhead
+  var px = Math.floor(progress * w);
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.fillRect(px-1, 0, 2, h);
 }
 
-// ── ART ──────────────────────────────────────────────────────
+function updateWF(deck) {
+  var s = S[deck];
+  if (!s.vidId || !wfData[deck] || !wfData[deck].length) return;
+  var progress = (s.duration && s.playing) ? (function(){
+    try { return s.player.getCurrentTime() / s.duration; } catch(e){ return 0; }
+  })() : (s.duration ? (function(){
+    try { return s.player.getCurrentTime() / s.duration; } catch(e){ return 0; }
+  })() : 0);
+  renderWF(deck, Math.max(0, Math.min(1, progress)));
+}
+
+// ── WINAMP-STYLE VU METER ────────────────────────────────────
+var vuCanvas = null;
+var vuState = {levelL:0, levelR:0, peakL:0, peakR:0, lastBeat:0};
+
+function buildVU() {
+  var wrap = $('vu-wrap'); wrap.innerHTML='';
+  wrap.style.width='100%'; wrap.style.height='70px';
+  vuCanvas = document.createElement('canvas');
+  vuCanvas.style.width='100%'; vuCanvas.style.height='100%';
+  wrap.appendChild(vuCanvas);
+}
+
+function updateVU() {
+  if (!vuCanvas) return;
+  var w = vuCanvas.offsetWidth||160, h = vuCanvas.offsetHeight||70;
+  if (vuCanvas.width!==w||vuCanvas.height!==h) { vuCanvas.width=w; vuCanvas.height=h; }
+  var ctx = vuCanvas.getContext('2d');
+  ctx.fillStyle = '#181818';
+  ctx.fillRect(0,0,w,h);
+
+  var active = S.a.playing || S.b.playing;
+  if (!active) {
+    vuState.levelL += (0 - vuState.levelL) * 0.1;
+    vuState.levelR += (0 - vuState.levelR) * 0.1;
+    vuState.peakL  = Math.max(0, vuState.peakL  - 0.01);
+    vuState.peakR  = Math.max(0, vuState.peakR  - 0.01);
+  } else {
+    var playingDeck = S.a.playing ? 'a' : 'b';
+    var bpm = S[playingDeck].bpm || 120;
+    var beatInterval = (60/bpm)*1000;
+    var now = Date.now();
+    var timeSinceBeat = now - vuState.lastBeat;
+    if (timeSinceBeat >= beatInterval) {
+      vuState.lastBeat = now - (timeSinceBeat % beatInterval);
+      timeSinceBeat = timeSinceBeat % beatInterval;
+    }
+    var beatPos = timeSinceBeat / beatInterval;
+    var beatPulse = Math.max(0, 1 - beatPos * 3.5);
+    var baseL = Math.max(0.05, Math.min(1, 0.45 + beatPulse*0.45 + (Math.random()-0.5)*0.12));
+    var baseR = Math.max(0.05, Math.min(1, 0.40 + beatPulse*0.42 + (Math.random()-0.5)*0.12));
+    vuState.levelL += (baseL - vuState.levelL) * (baseL>vuState.levelL?0.7:0.18);
+    vuState.levelR += (baseR - vuState.levelR) * (baseR>vuState.levelR?0.7:0.18);
+    if (vuState.levelL >= vuState.peakL) vuState.peakL=vuState.levelL;
+    else vuState.peakL = Math.max(0, vuState.peakL-0.008);
+    if (vuState.levelR >= vuState.peakR) vuState.peakR=vuState.levelR;
+    else vuState.peakR = Math.max(0, vuState.peakR-0.008);
+  }
+
+  var numBars=20, chH=Math.floor((h-6)/2), barW=Math.floor((w-2)/numBars), gap=1;
+  ['L','R'].forEach(function(ch,ci) {
+    var level=ch==='L'?vuState.levelL:vuState.levelR;
+    var peak=ch==='L'?vuState.peakL:vuState.peakR;
+    var yOff=ci*(chH+6);
+    var litBars=Math.round(level*numBars), peakBar=Math.round(peak*numBars);
+    for (var i=0;i<numBars;i++) {
+      var x=1+i*barW, bw=barW-gap, frac=i/numBars, r,g,b;
+      if(frac<0.6){r=60;g=200;b=60;}else if(frac<0.8){r=232;g=160;b=20;}else{r=220;g=40;b=20;}
+      ctx.fillStyle=i<litBars?'rgb('+r+','+g+','+b+')':'rgba('+r+','+g+','+b+',0.1)';
+      ctx.fillRect(x,yOff+1,bw,chH-1);
+      if(i===peakBar&&peakBar>0){ctx.fillStyle='rgba(255,255,255,0.9)';ctx.fillRect(x,yOff+1,bw,2);}
+    }
+    ctx.fillStyle='rgba(255,255,255,0.2)'; ctx.font='7px monospace'; ctx.fillText(ch,2,yOff+chH-2);
+  });
+}
 function loadThumb(deck,vidId){var s=S[deck];s.thumbImg=null;var img=new Image();img.crossOrigin='anonymous';img.onload=function(){s.thumbImg=img;};img.onerror=function(){var i2=new Image();i2.crossOrigin='anonymous';i2.onload=function(){s.thumbImg=i2;};i2.src='https://img.youtube.com/vi/'+vidId+'/mqdefault.jpg';};img.src='https://img.youtube.com/vi/'+vidId+'/hqdefault.jpg';}
 function drawArt(deck){var c=$(('art-'+deck));if(!c)return;var ctx=c.getContext('2d'),s=S[deck],cx=55,cy=55,r=55;ctx.save();ctx.translate(cx,cy);ctx.rotate(s.angle);ctx.translate(-cx,-cy);ctx.clearRect(0,0,110,110);ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.clip();if(s.thumbImg&&s.thumbImg.complete&&s.thumbImg.naturalWidth>0){var iw=s.thumbImg.naturalWidth,ih=s.thumbImg.naturalHeight,side=Math.min(iw,ih);ctx.drawImage(s.thumbImg,(iw-side)/2,(ih-side)/2,side,side,0,0,110,110);ctx.globalAlpha=0.35;for(var i=2;i<6;i++){ctx.beginPath();ctx.arc(cx,cy,i*9,0,Math.PI*2);ctx.strokeStyle='rgba(0,0,0,0.6)';ctx.lineWidth=1.5;ctx.stroke();}var vig=ctx.createRadialGradient(cx,cy,30,cx,cy,r);vig.addColorStop(0,'rgba(0,0,0,0)');vig.addColorStop(1,'rgba(0,0,0,0.55)');ctx.globalAlpha=1;ctx.fillStyle=vig;ctx.fillRect(0,0,110,110);}else{var cols=s.artColors||['#333','#111'];for(var j=5;j>0;j--){var gr=ctx.createRadialGradient(cx,cy,j*8,cx,cy,j*11);gr.addColorStop(0,cols[0]+(j%2?'cc':'88'));gr.addColorStop(1,cols[1]+'44');ctx.beginPath();ctx.arc(cx,cy,j*11,0,Math.PI*2);ctx.fillStyle=gr;ctx.fill();}for(var k=2;k<6;k++){ctx.beginPath();ctx.arc(cx,cy,k*9,0,Math.PI*2);ctx.strokeStyle='rgba(0,0,0,0.25)';ctx.lineWidth=1;ctx.stroke();}}ctx.restore();}
 function initArt(deck){var c=$(('art-'+deck));if(!c)return;var ctx=c.getContext('2d');ctx.fillStyle='#1a1a1a';ctx.beginPath();ctx.arc(55,55,55,0,Math.PI*2);ctx.fill();}
 
-// ── VU ───────────────────────────────────────────────────────
-function buildVU(){var wrap=$('vu-wrap');wrap.innerHTML='';['L','R'].forEach(function(ch){var col=document.createElement('div');col.className='vu-col';col.id='vu-'+ch;for(var i=0;i<12;i++){var seg=document.createElement('div');seg.className='vu-seg';seg.id='vu-'+ch+i;col.prepend(seg);}wrap.appendChild(col);});}
-function updateVU(){var active=S.a.playing||S.b.playing;['L','R'].forEach(function(ch){var level=active?Math.random()*10+2:0;for(var i=0;i<12;i++){var seg=$(('vu-'+ch+i));if(!seg)return;seg.className='vu-seg';if(i<level)seg.classList.add(i>=10?'rd':i>=7?'am':'g');}});}
 
 // ── FAVOURITES ───────────────────────────────────────────────
 function loadFavs(){try{favs=JSON.parse(localStorage.getItem(FAV_KEY)||'[]');}catch(e){favs=[];}renderCrates();}
@@ -988,7 +997,7 @@ function mainLoop(){
   ['a','b'].forEach(function(deck){
     var s=S[deck];
     if(s.artColors){if(s.playing)s.angle+=0.008;drawArt(deck);}
-    updateVis(deck);
+    updateWF(deck);
     if(!s.player||!s.playing)return;
     try{
       var cur=s.player.getCurrentTime(),dur=s.duration||s.player.getDuration()||0;if(!dur)return;
@@ -1020,7 +1029,7 @@ function mainLoop(){
 }
 
 // ── BOOT ─────────────────────────────────────────────────────
-function boot(){buildVU();initKnobs();initArt('a');initArt('b');initVis('a');initVis('b');updateXF(50);applyVols();loadFavs();checkBanner();mainLoop();if(!YT_KEY&&!API_URL)setTimeout(openSettings,600);if(API_URL){fetch(API_URL+'/health').catch(function(){});}}
+function boot(){buildVU();initKnobs();initArt('a');initArt('b');updateXF(50);applyVols();loadFavs();checkBanner();mainLoop();if(!YT_KEY&&!API_URL)setTimeout(openSettings,600);if(API_URL){fetch(API_URL+'/health').catch(function(){});}}
 var tag=document.createElement('script');tag.src='https://www.youtube.com/iframe_api';document.head.appendChild(tag);
 window.addEventListener('load',boot);
 if(document.readyState==='complete')boot();
