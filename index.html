@@ -84,7 +84,7 @@ body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;min-
 .track-sub{font-size:9px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace}
 .fav-np{background:none;border:none;cursor:pointer;font-size:16px;color:var(--muted);padding:0;flex-shrink:0}
 .fav-np:hover,.fav-np.on{color:var(--orange)}
-.wf-wrap{height:44px;background:var(--groove);border:1px solid var(--border);border-radius:3px;position:relative;cursor:pointer;overflow:hidden}
+.wf-wrap{height:80px;background:var(--groove);border:1px solid var(--border);border-radius:3px;position:relative;cursor:pointer;overflow:hidden}
 canvas.wf{width:100%;height:100%;display:block}
 .wf-head{position:absolute;top:0;left:50%;width:1px;height:100%;background:rgba(255,255,255,0.35);pointer-events:none}
 .cue-mark{position:absolute;top:0;width:2px;height:100%;background:var(--orange);display:none;pointer-events:none}
@@ -240,7 +240,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v2.2</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v2.3</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -552,7 +552,132 @@ function drawKnob(id,value){var c=$(('knob-'+id));if(!c)return;var ctx=c.getCont
 function initKnobs(){Object.keys(knobs).forEach(function(id){drawKnob(id,0);var c=$(('knob-'+id)),drag=false,sy=0,sv=0;c.addEventListener('mousedown',function(e){drag=true;sy=e.clientY;sv=knobs[id];e.preventDefault();});window.addEventListener('mousemove',function(e){if(!drag)return;knobs[id]=Math.max(-12,Math.min(12,sv+(sy-e.clientY)/2));drawKnob(id,knobs[id]);$(('kv-'+id)).textContent=(knobs[id]>=0?'+':'')+knobs[id].toFixed(1);});window.addEventListener('mouseup',function(){drag=false;});c.addEventListener('dblclick',function(){knobs[id]=0;drawKnob(id,0);$(('kv-'+id)).textContent='0';});});}
 
 // ── WAVEFORM ────────────────────────────────────────────────
-function drawWF(deck){var c=$(('wf-'+deck));if(!c)return;var w=c.offsetWidth||400,h=44;c.width=w;c.height=h;var ctx=c.getContext('2d');ctx.fillStyle='#181818';ctx.fillRect(0,0,w,h);var barW=1,gap=1,total=barW+gap,bars=Math.floor(w/total),phase=Math.random()*Math.PI*2;for(var j=0;j<bars;j++){var e=Math.min(1,Math.max(0.05,0.15+0.35*Math.abs(Math.sin(j/18+phase))+0.25*Math.abs(Math.sin(j/7+phase*1.3))+0.15*Math.abs(Math.sin(j/3+phase*2.1))+0.10*Math.random()));var bh=e*h*0.92,x=j*total,y=(h-bh)/2;if(e>0.75)ctx.fillStyle='rgba(255,'+(140+Math.floor(e*60))+','+Math.floor(e*40)+',0.95)';else if(e>0.45)ctx.fillStyle='rgba(232,101,26,'+(0.6+e*0.4)+')';else ctx.fillStyle='rgba(180,70,15,'+(0.3+e*0.5)+')';ctx.fillRect(x,y,barW,bh);}}
+// ── WINAMP VISUALISER ────────────────────────────────────────
+var vis = {
+  a: {bars:[], peaks:[], beatPhase:0, lastBeat:0, energy:0},
+  b: {bars:[], peaks:[], beatPhase:0, lastBeat:0, energy:0}
+};
+var VIS_BARS = 32;
+
+function initVis(deck) {
+  var v = vis[deck];
+  v.bars  = [];
+  v.peaks = [];
+  for (var i=0;i<VIS_BARS;i++) { v.bars.push(0); v.peaks.push(0); }
+}
+
+function drawWF(deck) {
+  // called once when track loads — just init, animation handles drawing
+  initVis(deck);
+}
+
+function updateVis(deck) {
+  var c = $(('wf-'+deck)); if(!c) return;
+  var s = S[deck];
+  var v = vis[deck];
+  var w = c.offsetWidth||400, h = 80;
+  if (c.width!==w||c.height!==h) { c.width=w; c.height=h; }
+  var ctx = c.getContext('2d');
+
+  // background
+  ctx.fillStyle = '#181818';
+  ctx.fillRect(0,0,w,h);
+
+  if (!s.playing && !s.vidId) return;
+
+  var now = Date.now();
+  var bpm = s.bpm || 120;
+  var beatInterval = (60/bpm)*1000;
+
+  // detect beat pulse
+  var timeSinceBeat = now - v.lastBeat;
+  var isBeat = timeSinceBeat >= beatInterval;
+  if (isBeat) { v.lastBeat = now - (timeSinceBeat % beatInterval); }
+
+  // beat phase 0→1
+  var beatPos = (timeSinceBeat % beatInterval) / beatInterval;
+  var beatPulse = isBeat ? 1.0 : Math.max(0, 1 - beatPos * 2.5);
+
+  // overall energy — higher when playing
+  var targetEnergy = s.playing ? 0.6 + beatPulse * 0.4 : 0.05;
+  v.energy += (targetEnergy - v.energy) * 0.15;
+
+  var barW = Math.floor(w / VIS_BARS);
+  var gap  = 1;
+
+  for (var i=0; i<VIS_BARS; i++) {
+    // frequency profile — bass (low i) higher, treble (high i) lower
+    var freqProfile = i < 4  ? 0.95 :   // sub-bass
+                      i < 8  ? 0.85 :   // bass
+                      i < 14 ? 0.65 :   // low-mid
+                      i < 20 ? 0.50 :   // mid
+                      i < 26 ? 0.35 :   // high-mid
+                               0.20;    // treble
+
+    // add beat kick to bass bars
+    var kick = (i < 6) ? beatPulse * 0.5 : 0;
+
+    // random noise per bar
+    var noise = (Math.random() - 0.5) * 0.25;
+
+    // target height
+    var target = v.energy * (freqProfile + kick + noise);
+    target = Math.max(0, Math.min(1, target));
+
+    // smooth toward target — attack fast, decay slower
+    var speed = target > v.bars[i] ? 0.45 : 0.12;
+    v.bars[i] += (target - v.bars[i]) * speed;
+
+    // peak dot — falls slowly
+    if (v.bars[i] >= v.peaks[i]) {
+      v.peaks[i] = v.bars[i];
+    } else {
+      v.peaks[i] -= 0.008;
+      if (v.peaks[i] < 0) v.peaks[i] = 0;
+    }
+
+    var bh   = Math.floor(v.bars[i]  * (h - 2));
+    var ph   = Math.floor(v.peaks[i] * (h - 2));
+    var x    = i * barW;
+    var barX = x + Math.floor(gap/2);
+    var bw   = barW - gap;
+
+    // colour by frequency band
+    var norm = v.bars[i];
+    if (i < 8) {
+      // bass — red to orange
+      var r=220, g=Math.floor(30 + norm*80), b=10;
+      ctx.fillStyle='rgb('+r+','+g+','+b+')';
+    } else if (i < 20) {
+      // mid — orange
+      var r2=232, g2=Math.floor(80+norm*60), b2=20;
+      ctx.fillStyle='rgb('+r2+','+g2+','+b2+')';
+    } else {
+      // treble — yellow
+      var r3=220, g3=Math.floor(180+norm*60), b3=20;
+      ctx.fillStyle='rgb('+r3+','+g3+','+b3+')';
+    }
+
+    // draw bar from bottom up
+    if (bh > 0) ctx.fillRect(barX, h-bh, bw, bh);
+
+    // peak dot
+    if (ph > 0) {
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.fillRect(barX, h-ph-2, bw, 2);
+    }
+  }
+
+  // playhead line
+  if (s.duration && s.playing) {
+    try {
+      var cur = s.player.getCurrentTime();
+      var px = Math.floor((cur/s.duration)*w);
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.fillRect(px, 0, 1, h);
+    } catch(e){}
+  }
+}
 
 // ── ART ──────────────────────────────────────────────────────
 function loadThumb(deck,vidId){var s=S[deck];s.thumbImg=null;var img=new Image();img.crossOrigin='anonymous';img.onload=function(){s.thumbImg=img;};img.onerror=function(){var i2=new Image();i2.crossOrigin='anonymous';i2.onload=function(){s.thumbImg=i2;};i2.src='https://img.youtube.com/vi/'+vidId+'/mqdefault.jpg';};img.src='https://img.youtube.com/vi/'+vidId+'/hqdefault.jpg';}
@@ -863,6 +988,7 @@ function mainLoop(){
   ['a','b'].forEach(function(deck){
     var s=S[deck];
     if(s.artColors){if(s.playing)s.angle+=0.008;drawArt(deck);}
+    updateVis(deck);
     if(!s.player||!s.playing)return;
     try{
       var cur=s.player.getCurrentTime(),dur=s.duration||s.player.getDuration()||0;if(!dur)return;
@@ -894,7 +1020,7 @@ function mainLoop(){
 }
 
 // ── BOOT ─────────────────────────────────────────────────────
-function boot(){buildVU();initKnobs();initArt('a');initArt('b');updateXF(50);applyVols();loadFavs();checkBanner();mainLoop();if(!YT_KEY&&!API_URL)setTimeout(openSettings,600);if(API_URL){fetch(API_URL+'/health').catch(function(){});}}
+function boot(){buildVU();initKnobs();initArt('a');initArt('b');initVis('a');initVis('b');updateXF(50);applyVols();loadFavs();checkBanner();mainLoop();if(!YT_KEY&&!API_URL)setTimeout(openSettings,600);if(API_URL){fetch(API_URL+'/health').catch(function(){});}}
 var tag=document.createElement('script');tag.src='https://www.youtube.com/iframe_api';document.head.appendChild(tag);
 window.addEventListener('load',boot);
 if(document.readyState==='complete')boot();
