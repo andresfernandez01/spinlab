@@ -136,8 +136,10 @@ input[type=range].tempo::-webkit-slider-thumb,input[type=range].vol::-webkit-sli
 .q-btn:hover{color:var(--orange);border-color:var(--orange)}
 .mixer{background:var(--panel2);display:flex;flex-direction:column;align-items:center;gap:12px;padding:14px 10px;border-top:2px solid var(--orange)}
 .mx-label{font-family:'Barlow Condensed',sans-serif;font-size:9px;letter-spacing:3px;color:var(--muted);font-weight:600;text-align:center}
-.vu-wrap{width:100%;height:70px;display:block}
-.vu-wrap canvas{display:block;width:100%;height:100%}
+.vu-wrap{display:flex;gap:3px;align-items:flex-end;height:70px}
+.vu-col{display:flex;flex-direction:column;gap:1px;justify-content:flex-end;height:100%}
+.vu-seg{width:10px;height:5px;border-radius:1px;background:var(--groove)}
+.vu-seg.g{background:#4caf80}.vu-seg.am{background:#e8a01a}.vu-seg.rd{background:#e83a1a}
 .xf-section{width:100%;display:flex;flex-direction:column;gap:4px}
 .xf-labels{display:flex;justify-content:space-between;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:600;letter-spacing:2px;color:var(--orange)}
 input[type=range].xfader{width:100%;height:5px;background:var(--groove);border-radius:2px;border:1px solid var(--border)}
@@ -238,7 +240,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v2.5</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v2.7</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -437,7 +439,8 @@ function onYTS(e,deck){
     $(('play-'+deck)).textContent='▶'; $(('play-'+deck)).classList.remove('on');
     $(('led-'+deck)).classList.remove('on'); s.autoFadeTriggered=false;
     if(e.data===YT.PlayerState.ENDED){
-      if(s.vidId) markPlayed(deck,s.vidId);
+      var endedVid = s.vidId;
+      if(endedVid) markPlayed(deck,endedVid);
       setTimeout(function(){shiftQueue(deck);},500);
     }
   }
@@ -630,68 +633,9 @@ function updateWF(deck) {
 
 // ── WINAMP-STYLE VU METER ────────────────────────────────────
 var vuCanvas = null;
-var vuState = {levelL:0, levelR:0, peakL:0, peakR:0, lastBeat:0};
-
-function buildVU() {
-  var wrap = $('vu-wrap'); wrap.innerHTML='';
-  wrap.style.width='100%'; wrap.style.height='70px';
-  vuCanvas = document.createElement('canvas');
-  vuCanvas.style.width='100%'; vuCanvas.style.height='100%';
-  wrap.appendChild(vuCanvas);
-}
-
-function updateVU() {
-  if (!vuCanvas) return;
-  var w = vuCanvas.offsetWidth||160, h = vuCanvas.offsetHeight||70;
-  if (vuCanvas.width!==w||vuCanvas.height!==h) { vuCanvas.width=w; vuCanvas.height=h; }
-  var ctx = vuCanvas.getContext('2d');
-  ctx.fillStyle = '#181818';
-  ctx.fillRect(0,0,w,h);
-
-  var active = S.a.playing || S.b.playing;
-  if (!active) {
-    vuState.levelL += (0 - vuState.levelL) * 0.1;
-    vuState.levelR += (0 - vuState.levelR) * 0.1;
-    vuState.peakL  = Math.max(0, vuState.peakL  - 0.01);
-    vuState.peakR  = Math.max(0, vuState.peakR  - 0.01);
-  } else {
-    var playingDeck = S.a.playing ? 'a' : 'b';
-    var bpm = S[playingDeck].bpm || 120;
-    var beatInterval = (60/bpm)*1000;
-    var now = Date.now();
-    var timeSinceBeat = now - vuState.lastBeat;
-    if (timeSinceBeat >= beatInterval) {
-      vuState.lastBeat = now - (timeSinceBeat % beatInterval);
-      timeSinceBeat = timeSinceBeat % beatInterval;
-    }
-    var beatPos = timeSinceBeat / beatInterval;
-    var beatPulse = Math.max(0, 1 - beatPos * 3.5);
-    var baseL = Math.max(0.05, Math.min(1, 0.45 + beatPulse*0.45 + (Math.random()-0.5)*0.12));
-    var baseR = Math.max(0.05, Math.min(1, 0.40 + beatPulse*0.42 + (Math.random()-0.5)*0.12));
-    vuState.levelL += (baseL - vuState.levelL) * (baseL>vuState.levelL?0.7:0.18);
-    vuState.levelR += (baseR - vuState.levelR) * (baseR>vuState.levelR?0.7:0.18);
-    if (vuState.levelL >= vuState.peakL) vuState.peakL=vuState.levelL;
-    else vuState.peakL = Math.max(0, vuState.peakL-0.008);
-    if (vuState.levelR >= vuState.peakR) vuState.peakR=vuState.levelR;
-    else vuState.peakR = Math.max(0, vuState.peakR-0.008);
-  }
-
-  var numBars=20, chH=Math.floor((h-6)/2), barW=Math.floor((w-2)/numBars), gap=1;
-  ['L','R'].forEach(function(ch,ci) {
-    var level=ch==='L'?vuState.levelL:vuState.levelR;
-    var peak=ch==='L'?vuState.peakL:vuState.peakR;
-    var yOff=ci*(chH+6);
-    var litBars=Math.round(level*numBars), peakBar=Math.round(peak*numBars);
-    for (var i=0;i<numBars;i++) {
-      var x=1+i*barW, bw=barW-gap, frac=i/numBars, r,g,b;
-      if(frac<0.6){r=60;g=200;b=60;}else if(frac<0.8){r=232;g=160;b=20;}else{r=220;g=40;b=20;}
-      ctx.fillStyle=i<litBars?'rgb('+r+','+g+','+b+')':'rgba('+r+','+g+','+b+',0.1)';
-      ctx.fillRect(x,yOff+1,bw,chH-1);
-      if(i===peakBar&&peakBar>0){ctx.fillStyle='rgba(255,255,255,0.9)';ctx.fillRect(x,yOff+1,bw,2);}
-    }
-    ctx.fillStyle='rgba(255,255,255,0.2)'; ctx.font='7px monospace'; ctx.fillText(ch,2,yOff+chH-2);
-  });
-}
+// ── VU ───────────────────────────────────────────────────────
+function buildVU(){var wrap=$('vu-wrap');wrap.innerHTML='';['L','R'].forEach(function(ch){var col=document.createElement('div');col.className='vu-col';col.id='vu-'+ch;for(var i=0;i<12;i++){var seg=document.createElement('div');seg.className='vu-seg';seg.id='vu-'+ch+i;col.prepend(seg);}wrap.appendChild(col);});}
+function updateVU(){var active=S.a.playing||S.b.playing;['L','R'].forEach(function(ch){var level=active?Math.random()*10+2:0;for(var i=0;i<12;i++){var seg=$(('vu-'+ch+i));if(!seg)return;seg.className='vu-seg';if(i<level)seg.classList.add(i>=10?'rd':i>=7?'am':'g');}});}
 function loadThumb(deck,vidId){var s=S[deck];s.thumbImg=null;var img=new Image();img.crossOrigin='anonymous';img.onload=function(){s.thumbImg=img;};img.onerror=function(){var i2=new Image();i2.crossOrigin='anonymous';i2.onload=function(){s.thumbImg=i2;};i2.src='https://img.youtube.com/vi/'+vidId+'/mqdefault.jpg';};img.src='https://img.youtube.com/vi/'+vidId+'/hqdefault.jpg';}
 function drawArt(deck){var c=$(('art-'+deck));if(!c)return;var ctx=c.getContext('2d'),s=S[deck],cx=55,cy=55,r=55;ctx.save();ctx.translate(cx,cy);ctx.rotate(s.angle);ctx.translate(-cx,-cy);ctx.clearRect(0,0,110,110);ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.clip();if(s.thumbImg&&s.thumbImg.complete&&s.thumbImg.naturalWidth>0){var iw=s.thumbImg.naturalWidth,ih=s.thumbImg.naturalHeight,side=Math.min(iw,ih);ctx.drawImage(s.thumbImg,(iw-side)/2,(ih-side)/2,side,side,0,0,110,110);ctx.globalAlpha=0.35;for(var i=2;i<6;i++){ctx.beginPath();ctx.arc(cx,cy,i*9,0,Math.PI*2);ctx.strokeStyle='rgba(0,0,0,0.6)';ctx.lineWidth=1.5;ctx.stroke();}var vig=ctx.createRadialGradient(cx,cy,30,cx,cy,r);vig.addColorStop(0,'rgba(0,0,0,0)');vig.addColorStop(1,'rgba(0,0,0,0.55)');ctx.globalAlpha=1;ctx.fillStyle=vig;ctx.fillRect(0,0,110,110);}else{var cols=s.artColors||['#333','#111'];for(var j=5;j>0;j--){var gr=ctx.createRadialGradient(cx,cy,j*8,cx,cy,j*11);gr.addColorStop(0,cols[0]+(j%2?'cc':'88'));gr.addColorStop(1,cols[1]+'44');ctx.beginPath();ctx.arc(cx,cy,j*11,0,Math.PI*2);ctx.fillStyle=gr;ctx.fill();}for(var k=2;k<6;k++){ctx.beginPath();ctx.arc(cx,cy,k*9,0,Math.PI*2);ctx.strokeStyle='rgba(0,0,0,0.25)';ctx.lineWidth=1;ctx.stroke();}}ctx.restore();}
 function initArt(deck){var c=$(('art-'+deck));if(!c)return;var ctx=c.getContext('2d');ctx.fillStyle='#1a1a1a';ctx.beginPath();ctx.arc(55,55,55,0,Math.PI*2);ctx.fill();}
@@ -973,8 +917,9 @@ function startFade(src,dest,btn,status,overrideDur){
       clearInterval(fadeInterval);fadeInterval=null;btn.classList.remove('fading');btn.textContent='⇄ FADE NOW';
       status.textContent='✓ FADED TO DECK '+dest.toUpperCase();
       S.a.autoFadeTriggered=false;S.b.autoFadeTriggered=false;
-      if(S[src].vidId)markPlayed(src,S[src].vidId);
+      var fadedVid=S[src].vidId;
       if(S[src].player)S[src].player.pauseVideo();
+      if(fadedVid)markPlayed(src,fadedVid);
       setTimeout(function(){shiftQueue(src);},800);
     }
   },1000/20);
