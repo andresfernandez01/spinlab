@@ -184,6 +184,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 .recs-badge{font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;padding:2px 7px;border-radius:3px;border:1px solid;display:none}
 .recs-badge.lastfm{color:#d51007;border-color:#d51007;background:rgba(213,16,7,0.1)}
 .recs-badge.youtube{color:var(--muted);border-color:var(--border2)}
+.recs-badge.ytmusic{color:#ff0055;border-color:#ff0055;background:rgba(255,0,85,0.1)}
 .recs-deck-btns{display:flex;gap:6px}
 .recs-deck-btn{height:24px;padding:0 10px;border-radius:3px;background:none;border:1px solid var(--border2);color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;cursor:pointer}
 .recs-deck-btn.on{color:var(--orange);border-color:var(--orange);background:var(--orangeGlow)}
@@ -210,6 +211,12 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
   <div class="settings-modal">
     <div class="settings-header"><span class="settings-title">⚙ SETTINGS</span><button class="settings-close" id="btn-close">✕</button></div>
     <div class="settings-section">
+      <div class="settings-label">SPINLAB API URL</div>
+      <div class="settings-desc">Optional — deploy the SPINLAB backend on Render for quota-free search and recommendations. Paste the URL here once deployed.</div>
+      <div class="api-row"><input type="text" id="api-url-input" class="api-input" placeholder="https://your-spinlab-api.onrender.com"></div>
+      <div class="api-status" id="api-url-status"></div>
+    </div>
+    <div class="settings-section">
       <div class="settings-label">YOUTUBE DATA API v3 KEY</div>
       <div class="settings-desc">Required for search. Free at <a href="https://console.cloud.google.com" target="_blank" class="settings-link">console.cloud.google.com</a> → APIs &amp; Services → Credentials.</div>
       <div class="api-row"><input type="password" id="yt-input" class="api-input" placeholder="Paste your YouTube API key..."><button class="api-toggle" id="yt-toggle">Show</button></div>
@@ -230,7 +237,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v1.9</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v2.1</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -344,8 +351,10 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 var FAV_KEY    = 'spinlab-favs';
 var YTKEY_KEY  = 'spinlab-yt-key';
 var LFMKEY_KEY = 'spinlab-lfm-key';
+var APIURL_KEY = 'spinlab-api-url';
 var YT_KEY     = localStorage.getItem(YTKEY_KEY)  || '';
 var LFM_KEY    = localStorage.getItem(LFMKEY_KEY) || '';
+var API_URL    = localStorage.getItem(APIURL_KEY)  || '';
 
 var S = {
   a:{player:null,playing:false,duration:0,bpm:null,vol:85,xfVol:0.5,cuePoint:0,looping:false,loopBars:0,loopStart:0,loopEnd:0,title:'',vidId:null,angle:0,artColors:null,thumbImg:null,autoFadeTriggered:false},
@@ -380,20 +389,28 @@ function parseTitle(title) {
 // ── SETTINGS ─────────────────────────────────────────────────
 function openSettings() {
   $('settings-overlay').classList.add('open');
+  var au=$('api-url-input'); au.value=API_URL;
+  var as=$('api-url-status'); as.className=API_URL?'api-status ok':'api-status warn';
+  as.textContent=API_URL?'✓ API connected ('+API_URL+')':'Not set — using YouTube API directly.';
   var yi=$('yt-input'); yi.value=YT_KEY; yi.type='password'; $('yt-toggle').textContent='Show';
   var ys=$('yt-status'); ys.className=YT_KEY?'api-status ok':'api-status warn'; ys.textContent=YT_KEY?'✓ Loaded ('+YT_KEY.slice(0,8)+'...)':'No key set.';
   var li=$('lfm-input'); li.value=LFM_KEY; li.type='password'; $('lfm-toggle').textContent='Show';
-  var ls=$('lfm-status'); ls.className=LFM_KEY?'api-status ok':'api-status warn'; ls.textContent=LFM_KEY?'✓ Loaded ('+LFM_KEY.slice(0,8)+'...)':'No key — YouTube fallback only.';
+  var ls=$('lfm-status'); ls.className=LFM_KEY?'api-status ok':'api-status warn'; ls.textContent=LFM_KEY?'✓ Loaded ('+LFM_KEY.slice(0,8)+'...)':'No key — recommendations disabled.';
 }
 function closeSettings() { $('settings-overlay').classList.remove('open'); }
 function saveSettings() {
+  var av=$('api-url-input').value.trim().replace(/\/$/,'');
   var yv=$('yt-input').value.trim(), lv=$('lfm-input').value.trim();
-  if(!yv){$('yt-status').className='api-status err';$('yt-status').textContent='Please paste a YouTube key.';return;}
-  YT_KEY=yv; localStorage.setItem(YTKEY_KEY,yv); $('yt-status').className='api-status ok'; $('yt-status').textContent='✓ Saved!';
+  // save API URL
+  if(av){API_URL=av;localStorage.setItem(APIURL_KEY,av);$('api-url-status').className='api-status ok';$('api-url-status').textContent='✓ Saved!';}
+  else{API_URL='';localStorage.removeItem(APIURL_KEY);}
+  // YT key only required if no API URL
+  if(!av&&!yv){$('yt-status').className='api-status err';$('yt-status').textContent='Paste a YouTube key or set the API URL above.';return;}
+  if(yv){YT_KEY=yv;localStorage.setItem(YTKEY_KEY,yv);$('yt-status').className='api-status ok';$('yt-status').textContent='✓ Saved!';}
   if(lv){LFM_KEY=lv;localStorage.setItem(LFMKEY_KEY,lv);$('lfm-status').className='api-status ok';$('lfm-status').textContent='✓ Saved!';}
   checkBanner(); setTimeout(closeSettings,700);
 }
-function checkBanner() { $('no-key-banner').style.display=YT_KEY?'none':'flex'; }
+function checkBanner() { $('no-key-banner').style.display=(YT_KEY||API_URL)?'none':'flex'; }
 $('btn-settings').addEventListener('click',openSettings);
 $('btn-banner').addEventListener('click',openSettings);
 $('btn-close').addEventListener('click',closeSettings);
@@ -428,27 +445,33 @@ function onYTS(e,deck){
 // ── SEARCH ───────────────────────────────────────────────────
 function doSearch(deck){
   var q=$(('search-'+deck)).value.trim(); if(!q) return;
-  if(!YT_KEY){openSettings();return;}
+  if(!YT_KEY&&!API_URL){openSettings();return;}
   var res=$(('results-'+deck)); res.innerHTML='';
   var msg=document.createElement('div'); msg.className='result-item msg'; msg.textContent='Searching...'; res.appendChild(msg);
-  fetch('https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=6&q='+encodeURIComponent(q)+'&type=video&videoCategoryId=10&key='+YT_KEY)
-    .then(function(r){return r.json();})
-    .then(function(d){
-      res.innerHTML='';
-      if(!d.items||!d.items.length){var m=document.createElement('div');m.className='result-item msg';m.textContent='No results';res.appendChild(m);return;}
-      d.items.forEach(function(item){
-        var vid=item.id.videoId, ttl=decodeHtml(item.snippet.title);
-        var div=document.createElement('div'); div.className='result-item';
-        var sp=document.createElement('span'); sp.className='result-title'; sp.textContent=ttl;
-        var q_btn=makeQBtn(deck,vid,ttl);
-        var star=document.createElement('span'); star.className='ri-star'+(isFav(vid)?' on':''); star.textContent='★';
-        star.addEventListener('click',function(e){e.stopPropagation();toggleFav(vid,ttl);star.classList.toggle('on',isFav(vid));});
-        div.appendChild(sp); div.appendChild(q_btn); div.appendChild(star);
-        div.addEventListener('click',function(e){if(e.target!==star&&e.target!==q_btn)loadTrack(deck,vid,ttl);});
-        res.appendChild(div);
-      });
-    })
-    .catch(function(){res.innerHTML='';var m=document.createElement('div');m.className='result-item msg';m.textContent='Error — check your API key';res.appendChild(m);});
+  var promise = API_URL
+    ? fetch(API_URL+'/search?q='+encodeURIComponent(q)+'&limit=8').then(function(r){return r.json();}).then(function(d){
+        if(d.error) throw new Error(d.error);
+        return (d.tracks||[]).map(function(t){return {
+          id:{videoId:t.videoId},
+          snippet:{title:t.title+(t.artist?' — '+t.artist:''),channelTitle:t.artist,thumbnails:{medium:{url:t.thumbnail},default:{url:t.thumbnail}}}
+        };});
+      })
+    : fetch('https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=8&q='+encodeURIComponent(q)+'&type=video&videoCategoryId=10&key='+YT_KEY).then(function(r){return r.json();}).then(function(d){return d.items||[];});
+  promise.then(function(items){
+    res.innerHTML='';
+    if(!items.length){var m=document.createElement('div');m.className='result-item msg';m.textContent='No results';res.appendChild(m);return;}
+    items.forEach(function(item){
+      var vid=item.id.videoId, ttl=decodeHtml(item.snippet.title);
+      var div=document.createElement('div'); div.className='result-item';
+      var sp=document.createElement('span'); sp.className='result-title'; sp.textContent=ttl;
+      var q_btn=makeQBtn(deck,vid,ttl);
+      var star=document.createElement('span'); star.className='ri-star'+(isFav(vid)?' on':''); star.textContent='★';
+      star.addEventListener('click',function(e){e.stopPropagation();toggleFav(vid,ttl);star.classList.toggle('on',isFav(vid));});
+      div.appendChild(sp); div.appendChild(q_btn); div.appendChild(star);
+      div.addEventListener('click',function(e){if(e.target!==star&&e.target!==q_btn)loadTrack(deck,vid,ttl);});
+      res.appendChild(div);
+    });
+  }).catch(function(){res.innerHTML='';var m=document.createElement('div');m.className='result-item msg';m.textContent='Error — check your settings';res.appendChild(m);});
 }
 $('srch-a').addEventListener('click',function(){doSearch('a');});
 $('srch-b').addEventListener('click',function(){doSearch('b');});
@@ -611,16 +634,43 @@ function renderQueue(deck){
 }
 
 // ── RECOMMENDATIONS ──────────────────────────────────────────
-function setRecsBadge(src){var b=$('recs-badge');if(!b)return;if(src==='lastfm'){b.textContent='LAST.FM';b.className='recs-badge lastfm';b.style.display='inline-block';}else if(src==='youtube'){b.textContent='YOUTUBE';b.className='recs-badge youtube';b.style.display='inline-block';}else{b.style.display='none';}}
+function setRecsBadge(src){var b=$('recs-badge');if(!b)return;if(src==='lastfm'){b.textContent='LAST.FM';b.className='recs-badge lastfm';b.style.display='inline-block';}else if(src==='youtube'){b.textContent='YOUTUBE';b.className='recs-badge youtube';b.style.display='inline-block';}else if(src==='ytmusic'){b.textContent='YT MUSIC';b.className='recs-badge ytmusic';b.style.display='inline-block';}else{b.style.display='none';}}
 function showRecsMsg(msg){var g=$('recs-grid');g.innerHTML='';var m=document.createElement('div');m.className='recs-msg';m.textContent=msg;g.appendChild(m);}
 $('recs-btn-a').addEventListener('click',function(){switchRecs('a');});
 $('recs-btn-b').addEventListener('click',function(){switchRecs('b');});
 function switchRecs(deck){recsActive=deck;$('recs-btn-a').classList.toggle('on',deck==='a');$('recs-btn-b').classList.toggle('on',deck==='b');if(recsCache[deck])renderRecs(recsCache[deck]);else if(S[deck].vidId)fetchRecs(deck);else showRecsMsg('Load a track on Deck '+deck.toUpperCase()+' to see recommendations');}
 
-function ytSearch(q){return fetch('https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=3&q='+encodeURIComponent(q)+'&type=video&videoCategoryId=10&key='+YT_KEY).then(function(r){return r.json();}).then(function(d){return d.items||[];}).catch(function(){return [];});}
+function ytSearch(q){if(API_URL){return fetch(API_URL+'/search?q='+encodeURIComponent(q)+'&limit=3').then(function(r){return r.json();}).then(function(d){return (d.tracks||[]).map(function(t){return{id:{videoId:t.videoId},snippet:{title:t.title+(t.artist?' 2014 '+t.artist:''),channelTitle:t.artist,thumbnails:{medium:{url:t.thumbnail},default:{url:t.thumbnail}}}};});}).catch(function(){return [];});}if(!YT_KEY)return Promise.resolve([]);return fetch('https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=3&q='+encodeURIComponent(q)+'&type=video&videoCategoryId=10&key='+YT_KEY).then(function(r){return r.json();}).then(function(d){return d.items||[];}).catch(function(){return [];});}
 
 function fetchRecs(deck){
-  if(!S[deck].vidId||!LFM_KEY)return;
+  if(!S[deck].vidId) return;
+  // Use SPINLAB API if available — YouTube Music recommendations
+  if(API_URL){
+    fetch(API_URL+'/recommendations?videoId='+S[deck].vidId+'&limit=10')
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(d.error||!d.tracks||!d.tracks.length){
+          if(LFM_KEY) fetchRecsLastFm(deck);
+          else showRecsMsg('No recommendations found');
+          return;
+        }
+        var items=d.tracks.map(function(t){return{
+          id:{videoId:t.videoId},
+          snippet:{title:t.title+(t.artist?' — '+t.artist:''),channelTitle:t.artist,thumbnails:{medium:{url:t.thumbnail},default:{url:t.thumbnail}}}
+        };});
+        recsCache[deck]=items; setRecsBadge('ytmusic');
+        if(deck===recsActive) renderRecs(items);
+      })
+      .catch(function(){if(LFM_KEY)fetchRecsLastFm(deck);else showRecsMsg('Could not load recommendations');});
+    return;
+  }
+  // Fall back to Last.fm
+  if(LFM_KEY){ fetchRecsLastFm(deck); return; }
+  showRecsMsg('Add a Last.fm API key or SPINLAB API URL in ⚙ settings to enable recommendations');
+}
+
+function fetchRecsLastFm(deck){
+  if(!LFM_KEY||!S[deck].vidId) return;
   var parsed=parseTitle(S[deck].title),artist=parsed.artist,track=parsed.track;
   fetch('https://ws.audioscrobbler.com/2.0/?method=track.getSimilar&artist='+encodeURIComponent(artist)+'&track='+encodeURIComponent(track)+'&api_key='+LFM_KEY+'&format=json&limit=12&autocorrect=1')
     .then(function(r){return r.json();})
@@ -809,7 +859,7 @@ function mainLoop(){
 }
 
 // ── BOOT ─────────────────────────────────────────────────────
-function boot(){buildVU();initKnobs();initArt('a');initArt('b');updateXF(50);applyVols();loadFavs();checkBanner();mainLoop();if(!YT_KEY)setTimeout(openSettings,600);}
+function boot(){buildVU();initKnobs();initArt('a');initArt('b');updateXF(50);applyVols();loadFavs();checkBanner();mainLoop();if(!YT_KEY&&!API_URL)setTimeout(openSettings,600);if(API_URL){fetch(API_URL+'/health').catch(function(){});}}
 var tag=document.createElement('script');tag.src='https://www.youtube.com/iframe_api';document.head.appendChild(tag);
 window.addEventListener('load',boot);
 if(document.readyState==='complete')boot();
