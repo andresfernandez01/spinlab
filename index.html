@@ -230,7 +230,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v1.6</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v1.8</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -477,7 +477,9 @@ function loadTrack(deck,vidId,title){
   $('recs-btn-b').classList.toggle('on',deck==='b');
   $('recs-panel').style.display='block';
   $('recs-source').textContent='based on: '+title.slice(0,45)+(title.length>45?'…':'');
-  setRecsBadge(null); showRecsMsg('Finding related tracks...');
+  setRecsBadge(null);
+  if(!LFM_KEY){ showRecsMsg('Add a Last.fm API key in ⚙ settings to enable recommendations'); return; }
+  showRecsMsg('Finding related tracks...');
   recsTimer[deck]=setTimeout(function(){fetchRecs(deck);},1200);
 }
 
@@ -618,32 +620,18 @@ function switchRecs(deck){recsActive=deck;$('recs-btn-a').classList.toggle('on',
 function ytSearch(q){return fetch('https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=3&q='+encodeURIComponent(q)+'&type=video&videoCategoryId=10&key='+YT_KEY).then(function(r){return r.json();}).then(function(d){return d.items||[];}).catch(function(){return [];});}
 
 function fetchRecs(deck){
-  if(!S[deck].vidId||!YT_KEY)return;
-  var parsed=parseTitle(S[deck].title),artist=parsed.artist,track=parsed.track,curVid=S[deck].vidId;
-  if(LFM_KEY){
-    fetch('https://ws.audioscrobbler.com/2.0/?method=track.getSimilar&artist='+encodeURIComponent(artist)+'&track='+encodeURIComponent(track)+'&api_key='+LFM_KEY+'&format=json&limit=6&autocorrect=1')
-      .then(function(r){return r.json();})
-      .then(function(lfmD){
-        var similar=lfmD&&lfmD.similartracks&&lfmD.similartracks.track;
-        if(!similar||similar.length<2){fetchRecsYT(deck,artist,curVid);return;}
-        var seen={},toSearch=[];
-        for(var i=0;i<similar.length;i++){var a=similar[i].artist&&similar[i].artist.name?similar[i].artist.name:'',t=similar[i].name||'';if(a&&!seen[a.toLowerCase()]){seen[a.toLowerCase()]=true;toSearch.push({a:a,t:t});}if(toSearch.length>=4)break;}
-        var valid=[],idx=0;
-        function next(){
-          if(idx>=toSearch.length||valid.length>=6){
-            if(valid.length>=2){recsCache[deck]=valid;setRecsBadge('lastfm');if(deck===recsActive)renderRecs(valid);}
-            else fetchRecsYT(deck,artist,curVid);
-            return;
-          }
-          var item=toSearch[idx];idx++;
-          ytSearch(item.a+' '+item.t).then(function(items){var filtered=items.filter(function(i){return i.id&&i.id.videoId&&i.snippet&&i.id.videoId!==curVid&&!isComp(i.snippet.title);});valid=valid.concat(filtered);next();});
-        }
-        next();
-      })
-      .catch(function(){fetchRecsYT(deck,artist,curVid);});
-  } else {
-    fetchRecsYT(deck,artist,curVid);
-  }
+  if(!S[deck].vidId||!LFM_KEY)return;
+  var parsed=parseTitle(S[deck].title),artist=parsed.artist,track=parsed.track;
+  fetch('https://ws.audioscrobbler.com/2.0/?method=track.getSimilar&artist='+encodeURIComponent(artist)+'&track='+encodeURIComponent(track)+'&api_key='+LFM_KEY+'&format=json&limit=12&autocorrect=1')
+    .then(function(r){return r.json();})
+    .then(function(lfmD){
+      var similar=lfmD&&lfmD.similartracks&&lfmD.similartracks.track;
+      if(!similar||similar.length<2){showRecsMsg('No similar tracks found on Last.fm');return;}
+      var items=similar.slice(0,10).map(function(t){return{lfm:true,artist:t.artist&&t.artist.name?t.artist.name:'',track:t.name||'',img:t.image&&t.image[1]&&t.image[1]['#text']?t.image[1]['#text']:'',url:t.url||''};});
+      recsCache[deck]=items;setRecsBadge('lastfm');
+      if(deck===recsActive)renderRecs(items);
+    })
+    .catch(function(){showRecsMsg('Could not reach Last.fm');});
 }
 
 function fetchRecsYT(deck,artist,curVid){
@@ -665,22 +653,59 @@ function renderRecs(items){
   var grid=$('recs-grid');grid.innerHTML='';
   if(!items||!items.length){showRecsMsg('No recommendations found');return;}
   items.forEach(function(item){
-    var vid=item.id.videoId,title=decodeHtml(item.snippet.title),channel=item.snippet.channelTitle||'';
-    var thumbs=item.snippet.thumbnails||{},thumb=(thumbs.medium||thumbs.default||{}).url||'';
     var card=document.createElement('div');card.className='rec-card';
-    var img=document.createElement('img');img.className='rec-thumb';img.src=thumb;img.alt=title;img.addEventListener('click',function(){loadTrack(recsActive,vid,title);});
-    var info=document.createElement('div');info.className='rec-info';
-    var ttl=document.createElement('div');ttl.className='rec-title';ttl.textContent=title;ttl.addEventListener('click',function(){loadTrack(recsActive,vid,title);});
-    var ch=document.createElement('div');ch.className='rec-ch';ch.textContent=channel;
-    info.appendChild(ttl);info.appendChild(ch);
-    var acts=document.createElement('div');acts.className='rec-acts';
-    var ba=document.createElement('button');ba.className='rec-act a';ba.textContent='→ A';ba.addEventListener('click',function(){loadTrack('a',vid,title);});
-    var bb=document.createElement('button');bb.className='rec-act b';bb.textContent='→ B';bb.addEventListener('click',function(){loadTrack('b',vid,title);});
-    var qa=makeQBtn('a',vid,title);
-    var qb=makeQBtn('b',vid,title);
-    var bs=document.createElement('button');bs.className='rec-act st'+(isFav(vid)?' on':'');bs.textContent='★';bs.addEventListener('click',function(){toggleFav(vid,title);bs.classList.toggle('on',isFav(vid));});
-    acts.appendChild(ba);acts.appendChild(bb);acts.appendChild(qa);acts.appendChild(qb);acts.appendChild(bs);
-    card.appendChild(img);card.appendChild(info);card.appendChild(acts);grid.appendChild(card);
+    if(item.lfm){
+      var info=document.createElement('div');info.className='rec-info';info.style.padding='10px';
+      var ttl=document.createElement('div');ttl.className='rec-title';ttl.textContent=item.track;ttl.style.fontWeight='500';
+      var ch=document.createElement('div');ch.className='rec-ch';ch.textContent=item.artist;ch.style.marginTop='4px';
+      info.appendChild(ttl);info.appendChild(ch);
+      var acts=document.createElement('div');acts.className='rec-acts';
+      var ba=document.createElement('button');ba.className='rec-act a';ba.textContent='→ A';
+      var bb=document.createElement('button');bb.className='rec-act b';bb.textContent='→ B';
+      var qa=document.createElement('button');qa.className='q-btn';qa.textContent='+Q A';
+      var qb=document.createElement('button');qb.className='q-btn';qb.textContent='+Q B';
+      (function(it){
+        function findAndLoad(deck,btn){
+          var orig=btn.textContent;btn.textContent='...';
+          ytSearch(it.artist+' '+it.track).then(function(results){
+            btn.textContent=orig;
+            var valid=results.filter(function(i){return i.id&&i.id.videoId&&i.snippet;});
+            if(valid.length){loadTrack(deck,valid[0].id.videoId,decodeHtml(valid[0].snippet.title));}
+            else showRecsMsg('Could not find "'+it.track+'" on YouTube');
+          });
+        }
+        function findAndQueue(deck,btn){
+          var orig=btn.textContent;btn.textContent='...';
+          ytSearch(it.artist+' '+it.track).then(function(results){
+            btn.textContent='✓';setTimeout(function(){btn.textContent=orig;},800);
+            var valid=results.filter(function(i){return i.id&&i.id.videoId&&i.snippet;});
+            if(valid.length){addToQueue(deck,valid[0].id.videoId,decodeHtml(valid[0].snippet.title));}
+          });
+        }
+        ba.addEventListener('click',function(e){e.stopPropagation();findAndLoad('a',ba);});
+        bb.addEventListener('click',function(e){e.stopPropagation();findAndLoad('b',bb);});
+        qa.addEventListener('click',function(e){e.stopPropagation();findAndQueue('a',qa);});
+        qb.addEventListener('click',function(e){e.stopPropagation();findAndQueue('b',qb);});
+      })(item);
+      acts.appendChild(ba);acts.appendChild(bb);acts.appendChild(qa);acts.appendChild(qb);
+      card.appendChild(info);card.appendChild(acts);
+    } else {
+      var vid=item.id.videoId,title=decodeHtml(item.snippet.title),channel=item.snippet.channelTitle||'';
+      var thumbs=item.snippet.thumbnails||{},thumb=(thumbs.medium||thumbs.default||{}).url||'';
+      var img=document.createElement('img');img.className='rec-thumb';img.src=thumb;img.alt=title;img.addEventListener('click',function(){loadTrack(recsActive,vid,title);});
+      var info=document.createElement('div');info.className='rec-info';
+      var ttl=document.createElement('div');ttl.className='rec-title';ttl.textContent=title;ttl.addEventListener('click',function(){loadTrack(recsActive,vid,title);});
+      var ch=document.createElement('div');ch.className='rec-ch';ch.textContent=channel;
+      info.appendChild(ttl);info.appendChild(ch);
+      var acts=document.createElement('div');acts.className='rec-acts';
+      var ba=document.createElement('button');ba.className='rec-act a';ba.textContent='→ A';ba.addEventListener('click',function(){loadTrack('a',vid,title);});
+      var bb=document.createElement('button');bb.className='rec-act b';bb.textContent='→ B';bb.addEventListener('click',function(){loadTrack('b',vid,title);});
+      var qa=makeQBtn('a',vid,title);var qb=makeQBtn('b',vid,title);
+      var bs=document.createElement('button');bs.className='rec-act st'+(isFav(vid)?' on':'');bs.textContent='★';bs.addEventListener('click',function(){toggleFav(vid,title);bs.classList.toggle('on',isFav(vid));});
+      acts.appendChild(ba);acts.appendChild(bb);acts.appendChild(qa);acts.appendChild(qb);acts.appendChild(bs);
+      card.appendChild(img);card.appendChild(info);card.appendChild(acts);
+    }
+    grid.appendChild(card);
   });
 }
 
