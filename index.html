@@ -264,7 +264,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v3.1</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v3.3</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -332,7 +332,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
     </div>
     <div class="autofade-section">
       <div class="mx-label">AUTO FADE</div>
-      <div class="fade-time-row"><span class="fade-time-label">TIME</span><input type="range" class="fade-time-slider" id="fade-time" min="3" max="60" value="5"><span class="fade-time-val" id="fade-time-val">5s</span></div>
+      <div class="fade-time-row"><span class="fade-time-label">TIME</span><input type="range" class="fade-time-slider" id="fade-time" min="3" max="60" value="15"><span class="fade-time-val" id="fade-time-val">15s</span></div>
       <button class="fade-btn" id="fade-btn">⇄ FADE NOW</button>
       <button class="fade-btn" id="auto-fade-btn" style="color:var(--muted)">AUTO FADE: OFF</button>
       <div class="fade-status" id="fade-status"></div>
@@ -471,8 +471,8 @@ function buildEQ(deck) {
         eqVals[d][idx] = v;
         vl.textContent = (v>=0?'+':'')+v.toFixed(0);
         vl.style.color = v>0?'var(--orange)':v<0?'#6a9fd8':'var(--muted)';
-        // colour the slider thumb via custom property
         sl.style.setProperty('--thumb-bg', v>0?'var(--orange)':v<0?'#4a7aaa':'#4a4a4a');
+        broadcastEQ(d);
       });
     })(deck, i, slider, val);
     sliderWrap.appendChild(zeroline);
@@ -496,7 +496,26 @@ function applyPreset(deck, name) {
       vl.style.color = v>0?'var(--orange)':v<0?'#6a9fd8':'var(--muted)';
     }
   });
+  broadcastEQ(deck);
 }
+
+// Send EQ values to the companion extension (if installed).
+// The extension relays them into the YouTube iframe's audio chain.
+var eqExtPresent = false;
+function broadcastEQ(deck) {
+  window.postMessage({type:'SPINLAB_EQ_SET', deck:deck, gains:eqVals[deck].slice()}, '*');
+}
+window.addEventListener('message', function(e){
+  if(e.data && e.data.type==='SPINLAB_EQ_EXT_PRESENT' && !eqExtPresent){
+    eqExtPresent = true;
+    // push current EQ state to both decks
+    broadcastEQ('a'); broadcastEQ('b');
+    // update the EQ labels to show it's live
+    var la=$('eq-a'), lb=$('eq-b');
+    var tagA=document.querySelector('#eq-a .eq-label'); if(tagA) tagA.textContent='EQ ●';
+    var tagB=document.querySelector('#eq-b .eq-label'); if(tagB) tagB.textContent='EQ ●';
+  }
+});
 
 function initKnobs(){ buildEQ('a'); buildEQ('b'); }
 var masterVol    = 0.8;
@@ -506,7 +525,7 @@ var recsActive   = 'a';
 var recsCache    = {a:null, b:null};
 var recsTimer    = {a:null, b:null};
 var fadeInterval = null;
-var fadeDuration = 5;
+var fadeDuration = 15;
 var autoFadeEnabled = false;
 
 function $(id) { return document.getElementById(id); }
