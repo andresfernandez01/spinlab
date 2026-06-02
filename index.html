@@ -264,7 +264,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v3.0</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v3.1</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -399,6 +399,8 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
     <span class="panel-title">◉ SETLISTS</span>
     <div style="display:flex;gap:8px;align-items:center">
       <span class="panel-sub" id="setlist-count">0 saved</span>
+      <button class="srch-btn" id="btn-import-setlist" style="height:26px;font-size:9px">↑ IMPORT</button>
+      <input type="file" id="setlist-file-input" accept=".txt,.json" style="display:none">
       <button class="srch-btn" id="btn-save-setlist" style="height:26px;font-size:9px">SAVE NOW</button>
     </div>
   </div>
@@ -1115,11 +1117,25 @@ function deleteSetlist(id) {
 }
 
 function loadSetlist(sl) {
-  // load first track to deck A, second to deck B, rest to deck A queue
-  sl.tracks.forEach(function(t, i) {
-    if(i===0) loadTrack('a', t.vid, t.title);
-    else if(i===1) loadTrack('b', t.vid, t.title);
-    else addToQueue('a', t.vid, t.title);
+  var toLoad = sl.tracks.slice();
+  var loaded = 0;
+  function loadNext(t, callback) {
+    if(t.vid) { callback(t.vid, t.title); return; }
+    // no video ID — search for it
+    ytSearch(t.title).then(function(results) {
+      if(results.length && results[0].id && results[0].id.videoId) {
+        t.vid = results[0].id.videoId;
+        callback(t.vid, t.title);
+      } else callback(null, t.title);
+    });
+  }
+  toLoad.forEach(function(t, i) {
+    loadNext(t, function(vid, title) {
+      if(!vid) return;
+      if(i===0) loadTrack('a', vid, title);
+      else if(i===1) loadTrack('b', vid, title);
+      else addToQueue('a', vid, title);
+    });
   });
 }
 
@@ -1166,7 +1182,50 @@ function renderSetlists() {
   });
 }
 
-// save setlist button wiring
+// import setlist
+$('btn-import-setlist').addEventListener('click', function() {
+  $('setlist-file-input').click();
+});
+$('setlist-file-input').addEventListener('change', function() {
+  var file = this.files[0]; if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var text = e.target.result;
+    try {
+      // try JSON first (future format)
+      var data = JSON.parse(text);
+      if(data.name && data.tracks) {
+        data.id = Date.now();
+        data.date = data.date || new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+        setlists.unshift(data);
+        saveSetlistsToStorage(); renderSetlists();
+        return;
+      }
+    } catch(e){}
+    // parse txt format
+    var lines = text.split('\n').map(function(l){return l.trim();}).filter(Boolean);
+    var name = 'Imported Setlist';
+    var date = new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+    var tracks = [];
+    lines.forEach(function(line) {
+      // header line: "SPINLAB SETLIST — Name"
+      if(line.indexOf('SPINLAB SETLIST')===0) {
+        name = line.split('—')[1] ? line.split('—')[1].trim() : name;
+        return;
+      }
+      // date line: "Saved: ..."
+      if(line.indexOf('Saved:')===0) { date=line.replace('Saved:','').trim(); return; }
+      // track line: "1. Title [Deck A]"
+      var match = line.match(/^\d+\.\s+(.+?)\s+\[(.+?)\]$/);
+      if(match) { tracks.push({title:match[1], deck:match[2], vid:null}); }
+    });
+    if(!tracks.length) { alert('Could not read any tracks from this file.'); return; }
+    setlists.unshift({id:Date.now(), name:name, date:date, tracks:tracks});
+    saveSetlistsToStorage(); renderSetlists();
+  };
+  reader.readAsText(file);
+  this.value=''; // reset so same file can be re-imported
+});
 $('btn-save-setlist').addEventListener('click', function() {
   var row = $('setlist-save-row');
   row.style.display = row.style.display==='none'||!row.style.display ? 'flex' : 'none';
