@@ -96,11 +96,22 @@ input[type=range]{-webkit-appearance:none;appearance:none;width:100%;outline:non
 input[type=range].prog{height:3px;background:var(--groove);border-radius:2px;border:1px solid var(--border)}
 input[type=range].prog::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;border-radius:50%;background:var(--orange)}
 .time-row{display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:9px;color:var(--muted)}
-.knob-row{display:flex;justify-content:space-between;align-items:flex-end;padding:0 4px}
-.knob-group{display:flex;flex-direction:column;align-items:center;gap:3px}
-.knob-label{font-family:'Barlow Condensed',sans-serif;font-size:9px;letter-spacing:2px;color:var(--muted);font-weight:600}
-canvas.knob{cursor:pointer;display:block}
-.knob-val{font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);text-align:center}
+.eq-section{display:flex;flex-direction:column;gap:5px;background:var(--groove);border:1px solid var(--border);border-radius:4px;padding:8px 10px}
+.eq-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px}
+.eq-label{font-family:'Barlow Condensed',sans-serif;font-size:9px;letter-spacing:3px;color:var(--orange);font-weight:700}
+.eq-preset-select{background:var(--surface3);border:1px solid var(--border2);border-radius:3px;padding:2px 6px;color:var(--text);font-family:'Barlow Condensed',sans-serif;font-size:9px;letter-spacing:1px;cursor:pointer;outline:none}
+.eq-preset-select option{background:var(--panel)}
+.eq-bands{display:flex;gap:4px;align-items:flex-end;justify-content:space-between;height:90px}
+.eq-band{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1}
+.eq-freq{font-family:'DM Mono',monospace;font-size:7px;color:var(--muted);text-align:center;white-space:nowrap}
+.eq-slider-wrap{position:relative;height:70px;display:flex;align-items:center;justify-content:center}
+input[type=range].eq-fader{-webkit-appearance:none;appearance:none;writing-mode:vertical-lr;direction:rtl;width:18px;height:64px;background:transparent;outline:none;cursor:pointer}
+input[type=range].eq-fader::-webkit-slider-runnable-track{width:4px;background:linear-gradient(to top,var(--border2),var(--border2));border-radius:2px}
+input[type=range].eq-fader::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:10px;border-radius:2px;background:linear-gradient(180deg,#5a5a5a,#2e2e2e);border:1px solid #111;box-shadow:0 1px 3px rgba(0,0,0,0.5);margin-left:-6px}
+input[type=range].eq-fader::-moz-range-track{width:4px;background:var(--border2);border-radius:2px}
+input[type=range].eq-fader::-moz-range-thumb{width:16px;height:10px;border-radius:2px;background:linear-gradient(180deg,#5a5a5a,#2e2e2e);border:1px solid #111;cursor:pointer}
+.eq-val{font-family:'DM Mono',monospace;font-size:7px;color:var(--muted);text-align:center;min-width:22px}
+.eq-zero-line{position:absolute;left:0;right:0;height:1px;background:var(--border2);pointer-events:none;top:50%}
 .tempo-row,.vol-row{display:flex;align-items:center;gap:8px}
 .tempo-label,.vol-label{font-family:'Barlow Condensed',sans-serif;font-size:9px;letter-spacing:2px;color:var(--muted);font-weight:600;white-space:nowrap}
 input[type=range].tempo,input[type=range].vol{height:3px;background:var(--groove);border-radius:2px;border:1px solid var(--border);flex:1}
@@ -181,6 +192,19 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 .crate-act.la,.crate-act.lb{color:var(--orange);border-color:var(--orange)}
 .crate-act.del:hover{color:#e83a1a;border-color:#e83a1a}
 .crates-empty{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);padding:10px 0;font-style:italic}
+.setlist-row{background:var(--groove);border:1px solid var(--border);border-radius:3px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+.setlist-row-top{display:flex;align-items:center;gap:8px}
+.setlist-icon{color:var(--orange);font-size:11px;flex-shrink:0}
+.setlist-name{flex:1;font-size:11px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.setlist-date{font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);flex-shrink:0}
+.setlist-tracks{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);line-height:1.5;padding-left:4px}
+.setlist-acts{display:flex;gap:4px;flex-wrap:wrap}
+.setlist-act{height:22px;padding:0 8px;border-radius:2px;background:linear-gradient(180deg,#353535,#252525);border:1px solid var(--border);font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;cursor:pointer;color:var(--muted)}
+.setlist-act:hover{color:var(--text)}
+.setlist-act.load{color:var(--orange);border-color:var(--orange)}
+.setlist-act.exp{color:#6a9fd8;border-color:#6a9fd8}
+.setlist-act.del:hover{color:#e83a1a;border-color:#e83a1a}
+.setlist-empty{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);padding:14px 0;font-style:italic}
 .recs-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .recs-title-col{display:flex;flex-direction:column;gap:4px}
 .recs-title-row{display:flex;align-items:center;gap:8px}
@@ -240,7 +264,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v2.8</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v3.0</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -260,11 +284,22 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
     <div class="track-info"><div class="track-text"><div class="track-name" id="title-a">No track loaded</div><div class="track-sub" id="status-a">—</div></div><button class="fav-np" id="fav-a">★</button></div>
     <div class="wf-wrap" id="wfw-a"><canvas class="wf" id="wf-a"></canvas><div class="wf-head"></div><div class="cue-mark" id="cue-a"></div></div>
     <div class="transport"><button class="play-btn" id="play-a">▶</button><div class="prog-wrap"><input type="range" class="prog" id="prog-a" min="0" max="1000" value="0"><div class="time-row"><span id="time-a">0:00</span><span id="dur-a">0:00</span></div></div></div>
-    <div class="knob-row">
-      <div class="knob-group"><div class="knob-label">GAIN</div><canvas class="knob" id="knob-a-gain" width="38" height="38"></canvas><div class="knob-val" id="kv-a-gain">0</div></div>
-      <div class="knob-group"><div class="knob-label">HIGH</div><canvas class="knob" id="knob-a-bass" width="38" height="38"></canvas><div class="knob-val" id="kv-a-bass">0</div></div>
-      <div class="knob-group"><div class="knob-label">MID</div><canvas class="knob" id="knob-a-mid" width="38" height="38"></canvas><div class="knob-val" id="kv-a-mid">0</div></div>
-      <div class="knob-group"><div class="knob-label">LOW</div><canvas class="knob" id="knob-a-treble" width="38" height="38"></canvas><div class="knob-val" id="kv-a-treble">0</div></div>
+    <div class="eq-section" id="eq-a">
+      <div class="eq-top">
+        <span class="eq-label">EQ</span>
+        <select class="eq-preset-select" id="eq-preset-a" onchange="applyPreset('a',this.value)">
+          <option value="flat">Flat</option>
+          <option value="bass">Bass Boost</option>
+          <option value="vocal">Vocal Boost</option>
+          <option value="club">Club</option>
+          <option value="pop">Pop</option>
+          <option value="rock">Rock</option>
+          <option value="hiphop">Hip-Hop</option>
+          <option value="electronic">Electronic</option>
+          <option value="classical">Classical</option>
+        </select>
+      </div>
+      <div class="eq-bands" id="eq-bands-a"></div>
     </div>
     <div class="tempo-row"><span class="tempo-label">TEMPO</span><input type="range" class="tempo" id="tempo-a" min="-8" max="8" value="0" step="0.1"><span class="tempo-val" id="tv-a">0.0%</span></div>
     <div class="vol-row"><span class="vol-label">CH VOL</span><input type="range" class="vol" id="vol-a" min="0" max="100" value="85"><span class="vol-val" id="vv-a">85</span></div>
@@ -313,11 +348,22 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
     <div class="track-info"><div class="track-text"><div class="track-name" id="title-b">No track loaded</div><div class="track-sub" id="status-b">—</div></div><button class="fav-np" id="fav-b">★</button></div>
     <div class="wf-wrap" id="wfw-b"><canvas class="wf" id="wf-b"></canvas><div class="wf-head"></div><div class="cue-mark" id="cue-b"></div></div>
     <div class="transport"><button class="play-btn" id="play-b">▶</button><div class="prog-wrap"><input type="range" class="prog" id="prog-b" min="0" max="1000" value="0"><div class="time-row"><span id="time-b">0:00</span><span id="dur-b">0:00</span></div></div></div>
-    <div class="knob-row">
-      <div class="knob-group"><div class="knob-label">GAIN</div><canvas class="knob" id="knob-b-gain" width="38" height="38"></canvas><div class="knob-val" id="kv-b-gain">0</div></div>
-      <div class="knob-group"><div class="knob-label">HIGH</div><canvas class="knob" id="knob-b-bass" width="38" height="38"></canvas><div class="knob-val" id="kv-b-bass">0</div></div>
-      <div class="knob-group"><div class="knob-label">MID</div><canvas class="knob" id="knob-b-mid" width="38" height="38"></canvas><div class="knob-val" id="kv-b-mid">0</div></div>
-      <div class="knob-group"><div class="knob-label">LOW</div><canvas class="knob" id="knob-b-treble" width="38" height="38"></canvas><div class="knob-val" id="kv-b-treble">0</div></div>
+    <div class="eq-section" id="eq-b">
+      <div class="eq-top">
+        <span class="eq-label">EQ</span>
+        <select class="eq-preset-select" id="eq-preset-b" onchange="applyPreset('b',this.value)">
+          <option value="flat">Flat</option>
+          <option value="bass">Bass Boost</option>
+          <option value="vocal">Vocal Boost</option>
+          <option value="club">Club</option>
+          <option value="pop">Pop</option>
+          <option value="rock">Rock</option>
+          <option value="hiphop">Hip-Hop</option>
+          <option value="electronic">Electronic</option>
+          <option value="classical">Classical</option>
+        </select>
+      </div>
+      <div class="eq-bands" id="eq-bands-b"></div>
     </div>
     <div class="tempo-row"><span class="tempo-label">TEMPO</span><input type="range" class="tempo" id="tempo-b" min="-8" max="8" value="0" step="0.1"><span class="tempo-val" id="tv-b">0.0%</span></div>
     <div class="vol-row"><span class="vol-label">CH VOL</span><input type="range" class="vol" id="vol-b" min="0" max="100" value="85"><span class="vol-val" id="vv-b">85</span></div>
@@ -347,6 +393,23 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
   <div class="recs-grid" id="recs-grid"></div>
 </div></div>
 
+<!-- SETLISTS -->
+<div class="bottom-panel"><div class="panel-box" id="setlist-panel">
+  <div class="panel-head">
+    <span class="panel-title">◉ SETLISTS</span>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span class="panel-sub" id="setlist-count">0 saved</span>
+      <button class="srch-btn" id="btn-save-setlist" style="height:26px;font-size:9px">SAVE NOW</button>
+    </div>
+  </div>
+  <div id="setlist-save-row" style="display:flex;gap:8px;margin-bottom:10px;display:none">
+    <input type="text" id="setlist-name-input" class="search-input" placeholder="Name this setlist..." style="max-width:300px">
+    <button class="srch-btn" id="btn-setlist-confirm" style="height:32px">SAVE</button>
+    <button class="btn-cancel" id="btn-setlist-cancel" style="height:32px">CANCEL</button>
+  </div>
+  <div id="setlist-grid" class="crates-grid" style="max-height:200px"></div>
+</div></div>
+
 <script>
 (function() {
 'use strict';
@@ -363,7 +426,77 @@ var S = {
   a:{player:null,playing:false,duration:0,bpm:null,vol:85,xfVol:0.5,cuePoint:0,looping:false,loopBars:0,loopStart:0,loopEnd:0,title:'',vidId:null,angle:0,artColors:null,thumbImg:null,autoFadeTriggered:false},
   b:{player:null,playing:false,duration:0,bpm:null,vol:85,xfVol:0.5,cuePoint:0,looping:false,loopBars:0,loopStart:0,loopEnd:0,title:'',vidId:null,angle:0,artColors:null,thumbImg:null,autoFadeTriggered:false}
 };
-var knobs = {'a-gain':0,'a-bass':0,'a-mid':0,'a-treble':0,'b-gain':0,'b-bass':0,'b-mid':0,'b-treble':0};
+// ── 10-BAND GRAPHIC EQ ───────────────────────────────────────
+var EQ_BANDS = [
+  {hz:'32Hz'}, {hz:'64Hz'}, {hz:'125Hz'}, {hz:'250Hz'}, {hz:'500Hz'},
+  {hz:'1kHz'}, {hz:'2kHz'}, {hz:'4kHz'}, {hz:'8kHz'}, {hz:'16kHz'}
+];
+
+var EQ_PRESETS = {
+  flat:       [ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
+  bass:       [ 6,  5,  4,  2,  0,  0,  0,  0,  0,  0],
+  vocal:      [-2, -2,  0,  2,  4,  4,  3,  2,  1,  0],
+  club:       [ 0,  0,  2,  4,  4,  3,  2,  1,  0,  0],
+  pop:        [-1,  0,  2,  4,  4,  3,  1,  0, -1, -1],
+  rock:       [ 4,  3,  2,  0, -1, -1,  0,  2,  4,  4],
+  hiphop:     [ 5,  4,  3,  1,  0, -1, -1,  0,  2,  3],
+  electronic: [ 4,  3,  1,  0, -2, -1,  0,  2,  3,  4],
+  classical:  [ 0,  0,  0,  0,  0,  0, -1, -2, -2, -3]
+};
+
+var eqVals = {
+  a: [0,0,0,0,0,0,0,0,0,0],
+  b: [0,0,0,0,0,0,0,0,0,0]
+};
+
+function buildEQ(deck) {
+  var wrap = $(('eq-bands-'+deck)); if(!wrap) return;
+  wrap.innerHTML = '';
+  EQ_BANDS.forEach(function(band, i) {
+    var col = document.createElement('div'); col.className = 'eq-band';
+    var sliderWrap = document.createElement('div'); sliderWrap.className = 'eq-slider-wrap';
+    var zeroline = document.createElement('div'); zeroline.className = 'eq-zero-line';
+    var slider = document.createElement('input');
+    slider.type = 'range'; slider.className = 'eq-fader';
+    slider.min = -12; slider.max = 12; slider.step = 0.5; slider.value = 0;
+    slider.id = 'eq-'+deck+'-'+i;
+    var val = document.createElement('div'); val.className = 'eq-val'; val.id = 'eqv-'+deck+'-'+i; val.textContent = '0';
+    var freq = document.createElement('div'); freq.className = 'eq-freq'; freq.textContent = band.hz;
+    // update display and colour on input
+    (function(d,idx,sl,vl){
+      sl.addEventListener('input', function() {
+        var v = parseFloat(sl.value);
+        eqVals[d][idx] = v;
+        vl.textContent = (v>=0?'+':'')+v.toFixed(0);
+        vl.style.color = v>0?'var(--orange)':v<0?'#6a9fd8':'var(--muted)';
+        // colour the slider thumb via custom property
+        sl.style.setProperty('--thumb-bg', v>0?'var(--orange)':v<0?'#4a7aaa':'#4a4a4a');
+      });
+    })(deck, i, slider, val);
+    sliderWrap.appendChild(zeroline);
+    sliderWrap.appendChild(slider);
+    col.appendChild(sliderWrap);
+    col.appendChild(val);
+    col.appendChild(freq);
+    wrap.appendChild(col);
+  });
+}
+
+function applyPreset(deck, name) {
+  var preset = EQ_PRESETS[name] || EQ_PRESETS.flat;
+  preset.forEach(function(v, i) {
+    eqVals[deck][i] = v;
+    var sl = $(('eq-'+deck+'-'+i));
+    var vl = $(('eqv-'+deck+'-'+i));
+    if(sl) sl.value = v;
+    if(vl) {
+      vl.textContent = (v>=0?'+':'')+v;
+      vl.style.color = v>0?'var(--orange)':v<0?'#6a9fd8':'var(--muted)';
+    }
+  });
+}
+
+function initKnobs(){ buildEQ('a'); buildEQ('b'); }
 var masterVol    = 0.8;
 var favs         = [];
 var queues       = {a:[], b:[]};
@@ -551,8 +684,7 @@ function setLoop(deck,bars){var s=S[deck];if(!s.player||!s.bpm||!s.duration)retu
 function clearLoop(deck){S[deck].looping=false;['1','2','4'].forEach(function(b){var el=$(('lb-'+deck+'-'+b));if(el)el.classList.remove('on');});}
 
 // ── KNOBS ────────────────────────────────────────────────────
-function drawKnob(id,value){var c=$(('knob-'+id));if(!c)return;var ctx=c.getContext('2d'),cx=19,cy=19,r=15;ctx.clearRect(0,0,38,38);var g=ctx.createRadialGradient(cx-3,cy-3,2,cx,cy,r);g.addColorStop(0,'#484848');g.addColorStop(1,'#252525');ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.strokeStyle='#111';ctx.lineWidth=1.5;ctx.stroke();var sa=Math.PI*0.65,ea=Math.PI*2.35,norm=(value+12)/24;ctx.beginPath();ctx.arc(cx,cy,r-3,sa,ea);ctx.strokeStyle='#1a1a1a';ctx.lineWidth=2.5;ctx.stroke();ctx.beginPath();ctx.arc(cx,cy,r-3,sa,sa+norm*(ea-sa));ctx.strokeStyle='#e8651a';ctx.lineWidth=2.5;ctx.stroke();var pa=sa+norm*(ea-sa);ctx.beginPath();ctx.moveTo(cx+Math.cos(pa-Math.PI/2)*(r-8),cy+Math.sin(pa-Math.PI/2)*(r-8));ctx.lineTo(cx+Math.cos(pa-Math.PI/2)*(r-2),cy+Math.sin(pa-Math.PI/2)*(r-2));ctx.strokeStyle='#f0f0f0';ctx.lineWidth=1.5;ctx.stroke();}
-function initKnobs(){Object.keys(knobs).forEach(function(id){drawKnob(id,0);var c=$(('knob-'+id)),drag=false,sy=0,sv=0;c.addEventListener('mousedown',function(e){drag=true;sy=e.clientY;sv=knobs[id];e.preventDefault();});window.addEventListener('mousemove',function(e){if(!drag)return;knobs[id]=Math.max(-12,Math.min(12,sv+(sy-e.clientY)/2));drawKnob(id,knobs[id]);$(('kv-'+id)).textContent=(knobs[id]>=0?'+':'')+knobs[id].toFixed(1);});window.addEventListener('mouseup',function(){drag=false;});c.addEventListener('dblclick',function(){knobs[id]=0;drawKnob(id,0);$(('kv-'+id)).textContent='0';});});}
+
 
 // ── WAVEFORM ────────────────────────────────────────────────
 // ── STATIC WAVEFORM ──────────────────────────────────────────
@@ -939,7 +1071,121 @@ function autoLoadNext(deck,srcDeck,cb){
   }).catch(function(){cb(false);});
 }
 
-// ── MAIN LOOP ────────────────────────────────────────────────
+// ── SETLISTS ─────────────────────────────────────────────────
+var SETLIST_KEY = 'spinlab-setlists';
+var setlists = [];
+
+function loadSetlists() {
+  try { setlists = JSON.parse(localStorage.getItem(SETLIST_KEY)||'[]'); } catch(e){ setlists=[]; }
+  renderSetlists();
+}
+
+function saveSetlistsToStorage() {
+  try { localStorage.setItem(SETLIST_KEY, JSON.stringify(setlists)); } catch(e){}
+}
+
+function captureSetlist(name) {
+  var tracks = [];
+  // currently loaded tracks
+  ['a','b'].forEach(function(d) {
+    if(S[d].vidId) tracks.push({vid:S[d].vidId, title:S[d].title, deck:'Deck '+d.toUpperCase()});
+  });
+  // queued tracks (unplayed only)
+  ['a','b'].forEach(function(d) {
+    queues[d].forEach(function(t) {
+      if(!t.played) tracks.push({vid:t.vid, title:t.title, deck:'Queue '+d.toUpperCase()});
+    });
+  });
+  if(!tracks.length) { alert('No tracks loaded or queued to save!'); return; }
+  var sl = {
+    id: Date.now(),
+    name: name || 'Setlist '+(setlists.length+1),
+    date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}),
+    tracks: tracks
+  };
+  setlists.unshift(sl);
+  saveSetlistsToStorage();
+  renderSetlists();
+}
+
+function deleteSetlist(id) {
+  setlists = setlists.filter(function(s){return s.id!==id;});
+  saveSetlistsToStorage();
+  renderSetlists();
+}
+
+function loadSetlist(sl) {
+  // load first track to deck A, second to deck B, rest to deck A queue
+  sl.tracks.forEach(function(t, i) {
+    if(i===0) loadTrack('a', t.vid, t.title);
+    else if(i===1) loadTrack('b', t.vid, t.title);
+    else addToQueue('a', t.vid, t.title);
+  });
+}
+
+function exportSetlist(sl) {
+  var lines = ['SPINLAB SETLIST — '+sl.name, 'Saved: '+sl.date, ''];
+  sl.tracks.forEach(function(t, i) {
+    lines.push((i+1)+'. '+t.title+' ['+t.deck+']');
+  });
+  var blob = new Blob([lines.join('\n')], {type:'text/plain'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = sl.name.replace(/[^a-z0-9]/gi,'_')+'.txt';
+  a.click();
+}
+
+function renderSetlists() {
+  var grid = $('setlist-grid');
+  var count = $('setlist-count');
+  count.textContent = setlists.length+(setlists.length===1?' saved':' saved');
+  grid.innerHTML = '';
+  if(!setlists.length) {
+    var e=document.createElement('div');e.className='setlist-empty';e.textContent='No setlists saved yet — load some tracks and hit SAVE NOW';
+    grid.appendChild(e); return;
+  }
+  setlists.forEach(function(sl) {
+    var row=document.createElement('div'); row.className='setlist-row';
+    var top=document.createElement('div'); top.className='setlist-row-top';
+    var icon=document.createElement('span'); icon.className='setlist-icon'; icon.textContent='◉';
+    var name=document.createElement('span'); name.className='setlist-name'; name.textContent=sl.name;
+    var date=document.createElement('span'); date.className='setlist-date'; date.textContent=sl.date;
+    top.appendChild(icon); top.appendChild(name); top.appendChild(date);
+    var trks=document.createElement('div'); trks.className='setlist-tracks';
+    trks.textContent=sl.tracks.slice(0,4).map(function(t,i){return (i+1)+'. '+t.title.slice(0,40)+(t.title.length>40?'…':'');}).join(' · ')+(sl.tracks.length>4?' +' + (sl.tracks.length-4)+' more':'');
+    var acts=document.createElement('div'); acts.className='setlist-acts';
+    var btnLoad=document.createElement('button'); btnLoad.className='setlist-act load'; btnLoad.textContent='▶ LOAD';
+    btnLoad.addEventListener('click',function(){loadSetlist(sl);});
+    var btnExp=document.createElement('button'); btnExp.className='setlist-act exp'; btnExp.textContent='↓ EXPORT';
+    btnExp.addEventListener('click',function(){exportSetlist(sl);});
+    var btnDel=document.createElement('button'); btnDel.className='setlist-act del'; btnDel.textContent='✕';
+    btnDel.addEventListener('click',function(){deleteSetlist(sl.id);});
+    acts.appendChild(btnLoad); acts.appendChild(btnExp); acts.appendChild(btnDel);
+    row.appendChild(top); row.appendChild(trks); row.appendChild(acts);
+    grid.appendChild(row);
+  });
+}
+
+// save setlist button wiring
+$('btn-save-setlist').addEventListener('click', function() {
+  var row = $('setlist-save-row');
+  row.style.display = row.style.display==='none'||!row.style.display ? 'flex' : 'none';
+  if(row.style.display==='flex') $('setlist-name-input').focus();
+});
+$('btn-setlist-confirm').addEventListener('click', function() {
+  var name = $('setlist-name-input').value.trim();
+  captureSetlist(name);
+  $('setlist-name-input').value='';
+  $('setlist-save-row').style.display='none';
+});
+$('btn-setlist-cancel').addEventListener('click', function() {
+  $('setlist-save-row').style.display='none';
+  $('setlist-name-input').value='';
+});
+$('setlist-name-input').addEventListener('keydown', function(e) {
+  if(e.key==='Enter') $('btn-setlist-confirm').click();
+  if(e.key==='Escape') $('btn-setlist-cancel').click();
+});
 function mainLoop(){
   ['a','b'].forEach(function(deck){
     var s=S[deck];
@@ -976,9 +1222,10 @@ function mainLoop(){
 }
 
 // ── BOOT ─────────────────────────────────────────────────────
-function boot(){buildVU();initKnobs();initArt('a');initArt('b');updateXF(50);applyVols();loadFavs();checkBanner();mainLoop();if(!YT_KEY&&!API_URL)setTimeout(openSettings,600);if(API_URL){fetch(API_URL+'/health').catch(function(){});}}
+function boot(){buildVU();initKnobs();initArt('a');initArt('b');updateXF(50);applyVols();loadFavs();loadSetlists();checkBanner();mainLoop();if(!YT_KEY&&!API_URL)setTimeout(openSettings,600);if(API_URL){fetch(API_URL+'/health').catch(function(){});}}
 // expose player init globally so onYouTubeIframeAPIReady can reach it
 window._spinlabPlayers = function(){S.a.player=mkPlayer('yt-a','a');S.b.player=mkPlayer('yt-b','b');};
+window.applyPreset = function(deck,name){ applyPreset(deck,name); };
 // if API already loaded (e.g. cached), call init directly
 if(window.YT&&window.YT.Player) window._spinlabPlayers();
 var tag=document.createElement('script');tag.src='https://www.youtube.com/iframe_api';document.head.appendChild(tag);
