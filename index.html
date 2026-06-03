@@ -1362,22 +1362,47 @@ function fetchLyrics(deck){
   $('lyrics-body').innerHTML='<div class="lyrics-msg">Searching for lyrics…</div>';
   lyricsState.synced=[];lyricsState.plain='';lyricsState.isSynced=false;lyricsState.activeIdx=-1;
   var token=++lyricsState.fetchToken;
-  var durParam=s.duration?'&duration='+Math.round(s.duration):'';
-  var url='https://lrclib.net/api/get?artist_name='+encodeURIComponent(artist)+'&track_name='+encodeURIComponent(track)+durParam;
-  fetch(url).then(function(r){return r.ok?r.json():null;}).then(function(data){
-    if(token!==lyricsState.fetchToken)return;
-    if(data&&(data.syncedLyrics||data.plainLyrics)){renderLyrics(data);return;}
-    lrclibSearch(artist,track,token);
-  }).catch(function(){if(token===lyricsState.fetchToken)lrclibSearch(artist,track,token);});
-}
+  var dur=s.duration?Math.round(s.duration):0;
 
-function lrclibSearch(artist,track,token){
-  var url='https://lrclib.net/api/search?artist_name='+encodeURIComponent(artist)+'&track_name='+encodeURIComponent(track);
-  fetch(url).then(function(r){return r.ok?r.json():[];}).then(function(arr){
-    if(token!==lyricsState.fetchToken)return;
-    if(arr&&arr.length){var best=arr.find(function(x){return x.syncedLyrics||x.plainLyrics;})||arr[0];renderLyrics(best);}
-    else $('lyrics-body').innerHTML='<div class="lyrics-msg">No lyrics found for this track</div>';
-  }).catch(function(){if(token===lyricsState.fetchToken)$('lyrics-body').innerHTML='<div class="lyrics-msg">Could not load lyrics</div>';});
+  // try a single artist/track combination against LRCLIB get + search
+  function tryCombo(a, t, onFail){
+    var durParam=dur?'&duration='+dur:'';
+    fetch('https://lrclib.net/api/get?artist_name='+encodeURIComponent(a)+'&track_name='+encodeURIComponent(t)+durParam)
+      .then(function(r){return r.ok?r.json():null;})
+      .then(function(data){
+        if(token!==lyricsState.fetchToken)return;
+        if(data&&(data.syncedLyrics||data.plainLyrics)){renderLyrics(data);return;}
+        // search fallback for this combo
+        fetch('https://lrclib.net/api/search?artist_name='+encodeURIComponent(a)+'&track_name='+encodeURIComponent(t))
+          .then(function(r){return r.ok?r.json():[];})
+          .then(function(arr){
+            if(token!==lyricsState.fetchToken)return;
+            var best=arr&&arr.length?(arr.find(function(x){return x.syncedLyrics||x.plainLyrics;})||arr[0]):null;
+            if(best&&(best.syncedLyrics||best.plainLyrics)){renderLyrics(best);}
+            else if(onFail){onFail();}
+            else $('lyrics-body').innerHTML='<div class="lyrics-msg">No lyrics found for this track</div>';
+          })
+          .catch(function(){if(token===lyricsState.fetchToken){if(onFail)onFail();else $('lyrics-body').innerHTML='<div class="lyrics-msg">Could not load lyrics</div>';}});
+      })
+      .catch(function(){if(token===lyricsState.fetchToken){if(onFail)onFail();}});
+  }
+
+  // try artist/track as parsed, then swapped, then a looser search by title text
+  tryCombo(artist, track, function(){
+    tryCombo(track, artist, function(){
+      // last resort: generic search on the whole cleaned title
+      var q=(artist+' '+track).trim();
+      fetch('https://lrclib.net/api/search?q='+encodeURIComponent(q))
+        .then(function(r){return r.ok?r.json():[];})
+        .then(function(arr){
+          if(token!==lyricsState.fetchToken)return;
+          var best=arr&&arr.length?(arr.find(function(x){return x.syncedLyrics||x.plainLyrics;})||arr[0]):null;
+          if(best&&(best.syncedLyrics||best.plainLyrics))renderLyrics(best);
+          else $('lyrics-body').innerHTML='<div class="lyrics-msg">No lyrics found for this track</div>';
+        })
+        .catch(function(){if(token===lyricsState.fetchToken)$('lyrics-body').innerHTML='<div class="lyrics-msg">No lyrics found for this track</div>';});
+    });
+  });
 }
 
 function parseSyncedLyrics(lrc){
