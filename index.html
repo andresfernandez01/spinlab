@@ -264,7 +264,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v3.4</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v3.5</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -521,6 +521,7 @@ function initKnobs(){ buildEQ('a'); buildEQ('b'); }
 var masterVol    = 0.8;
 var favs         = [];
 var queues       = {a:[], b:[]};
+var queueDrag    = null;
 var recsActive   = 'a';
 var recsCache    = {a:null, b:null};
 var recsTimer    = {a:null, b:null};
@@ -847,14 +848,18 @@ function renderQueue(deck){
   count.textContent=unplayed+' up'+(q.length-unplayed>0?' · '+(q.length-unplayed)+' played':'');
   panel.style.display=q.length?'flex':'none';
   list.innerHTML='';
-  if(!q.length){var e=document.createElement('div');e.className='queue-empty';e.textContent='Queue is empty';list.appendChild(e);return;}
+  if(!q.length){
+    var e=document.createElement('div');e.className='queue-empty';e.textContent='Queue is empty';
+    list.appendChild(e);
+    // still allow dropping onto an empty queue from the other deck
+    setupListDrop(list, deck);
+    return;
+  }
   var upNum=0;
-  var dragSrc=null;
   q.forEach(function(track,i){
     var item=document.createElement('div');item.className='queue-item'+(track.played?' played':'');
     item.draggable=true;
-    // drag handle
-    var handle=document.createElement('span');handle.className='queue-drag';handle.textContent='⠿';handle.title='Drag to reorder';
+    var handle=document.createElement('span');handle.className='queue-drag';handle.textContent='⠿';handle.title='Drag to reorder or move to other deck';
     var pos=document.createElement('span');pos.className='queue-pos';
     if(track.played){pos.textContent='✓';}else{upNum++;pos.textContent=upNum+'.';}
     var name=document.createElement('span');name.className='queue-name';name.textContent=track.title;name.title=track.title;
@@ -866,16 +871,15 @@ function renderQueue(deck){
       load.addEventListener('click',function(e){e.stopPropagation();t.played=false;loadTrack(d,t.vid,t.title);renderQueue(d);});
       rm.addEventListener('click',function(e){e.stopPropagation();removeFromQueue(d,idx);});
     })(track,i,deck);
-    // drag events
     (function(idx,d){
       item.addEventListener('dragstart',function(e){
-        dragSrc=idx;
+        queueDrag = {deck:d, idx:idx};
         e.dataTransfer.effectAllowed='move';
         item.style.opacity='0.4';
       });
       item.addEventListener('dragend',function(){
         item.style.opacity='';
-        list.querySelectorAll('.queue-item').forEach(function(el){el.classList.remove('drag-over');});
+        document.querySelectorAll('.queue-item').forEach(function(el){el.classList.remove('drag-over');});
       });
       item.addEventListener('dragover',function(e){
         e.preventDefault();
@@ -886,19 +890,43 @@ function renderQueue(deck){
       item.addEventListener('drop',function(e){
         e.preventDefault();
         item.classList.remove('drag-over');
-        if(dragSrc===null||dragSrc===idx) return;
-        // reorder queue
-        var moved=queues[d].splice(dragSrc,1)[0];
-        queues[d].splice(idx,0,moved);
-        dragSrc=null;
-        renderQueue(d);
+        if(!queueDrag) return;
+        moveQueueItem(queueDrag.deck, queueDrag.idx, d, idx);
+        queueDrag = null;
       });
     })(i,deck);
     item.appendChild(handle);item.appendChild(pos);item.appendChild(name);item.appendChild(load);item.appendChild(rm);
     list.appendChild(item);
   });
+  setupListDrop(list, deck);
   var first=list.querySelector('.queue-item:not(.played)');
   if(first)first.scrollIntoView({block:'nearest'});
+}
+
+// allow dropping onto the list container itself (e.g. empty area / end of list)
+function setupListDrop(list, deck) {
+  list.addEventListener('dragover', function(e){ e.preventDefault(); e.dataTransfer.dropEffect='move'; });
+  list.addEventListener('drop', function(e){
+    e.preventDefault();
+    if(!queueDrag) return;
+    // dropped on the list but not on a specific item — append to end
+    if(e.target===list || e.target.className==='queue-empty') {
+      moveQueueItem(queueDrag.deck, queueDrag.idx, deck, queues[deck].length);
+      queueDrag = null;
+    }
+  });
+}
+
+// move a track within a queue or across to the other deck's queue
+function moveQueueItem(srcDeck, srcIdx, destDeck, destIdx) {
+  if(srcDeck===destDeck && srcIdx===destIdx) return;
+  var moved = queues[srcDeck].splice(srcIdx, 1)[0];
+  if(!moved) return;
+  // if moving down within same queue, the splice shifted indices
+  if(srcDeck===destDeck && srcIdx < destIdx) destIdx--;
+  queues[destDeck].splice(destIdx, 0, moved);
+  renderQueue(srcDeck);
+  if(destDeck!==srcDeck) renderQueue(destDeck);
 }
 
 // ── RECOMMENDATIONS ──────────────────────────────────────────
