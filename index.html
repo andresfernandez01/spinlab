@@ -29,7 +29,7 @@ body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;min-
 .settings-modal{background:var(--panel);border:1px solid var(--border2);border-top:2px solid var(--orange);border-radius:6px;width:500px;max-width:94vw;overflow:hidden}
 .lyrics-sync-toggle{background:var(--groove);border:1px solid var(--orange);border-radius:3px;color:var(--orange);font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;letter-spacing:1px;padding:4px 8px;cursor:pointer}
 .lyrics-sync-toggle.off{border-color:var(--border2);color:var(--muted)}
-.lyrics-body{max-height:280px;overflow-y:auto;padding:14px 6px;scroll-behavior:smooth;text-align:center}
+.lyrics-body{max-height:280px;overflow-y:auto;padding:14px 6px;scroll-behavior:smooth;text-align:center;position:relative}
 .lyrics-body.minimized{display:none}
 .lyrics-body::-webkit-scrollbar{width:4px}
 .lyrics-body::-webkit-scrollbar-thumb{background:var(--border2)}
@@ -278,7 +278,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v4.0</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v4.1</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -1417,7 +1417,15 @@ function updateLyricsScroll(){
   if(idx!==lyricsState.activeIdx){
     var old=$('lyric-line-'+lyricsState.activeIdx);if(old)old.classList.remove('active');
     var el=$('lyric-line-'+idx);
-    if(el){el.classList.add('active');if(lyricsState.autoScroll)el.scrollIntoView({block:'center',behavior:'smooth'});}
+    if(el){
+      el.classList.add('active');
+      if(lyricsState.autoScroll){
+        // scroll only within the lyrics body container, not the whole page
+        var body=$('lyrics-body');
+        var target=el.offsetTop - (body.clientHeight/2) + (el.clientHeight/2);
+        body.scrollTo({top:target, behavior:'smooth'});
+      }
+    }
     lyricsState.activeIdx=idx;
   }
 }
