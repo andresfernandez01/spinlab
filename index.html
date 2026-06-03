@@ -27,6 +27,18 @@ body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;min-
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:1000;align-items:center;justify-content:center}
 .overlay.open{display:flex}
 .settings-modal{background:var(--panel);border:1px solid var(--border2);border-top:2px solid var(--orange);border-radius:6px;width:500px;max-width:94vw;overflow:hidden}
+.lyrics-sync-toggle{background:var(--groove);border:1px solid var(--orange);border-radius:3px;color:var(--orange);font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;letter-spacing:1px;padding:4px 8px;cursor:pointer}
+.lyrics-sync-toggle.off{border-color:var(--border2);color:var(--muted)}
+.lyrics-body{max-height:280px;overflow-y:auto;padding:14px 6px;scroll-behavior:smooth;text-align:center}
+.lyrics-body.minimized{display:none}
+.lyrics-body::-webkit-scrollbar{width:4px}
+.lyrics-body::-webkit-scrollbar-thumb{background:var(--border2)}
+.lyrics-line{font-family:'Barlow',sans-serif;font-size:15px;line-height:1.5;color:var(--muted);padding:5px 0;transition:color .2s,font-size .2s;opacity:0.5}
+.lyrics-line.active{color:var(--orange);font-size:19px;font-weight:600;opacity:1}
+.lyrics-line.synced{cursor:pointer}
+.lyrics-line.synced:hover{color:var(--text)}
+.lyrics-msg{font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);text-align:center;padding:30px 0;font-style:italic}
+.lyrics-plain{white-space:pre-wrap;font-family:'Barlow',sans-serif;font-size:15px;line-height:1.7;color:var(--text);text-align:center}
 .settings-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)}
 .settings-title{font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:700;letter-spacing:4px;color:var(--orange)}
 .settings-close{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0}
@@ -266,7 +278,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v3.8</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v4.0</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -283,7 +295,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
     <div class="search-row"><input class="search-input" id="search-a" placeholder="Search YouTube..."><button class="srch-btn" id="srch-a">FIND</button></div>
     <div class="results" id="results-a"></div>
     <div class="platter-wrap"><div class="platter-outer"><div class="platter-ring"></div><div class="platter-ring2"></div><div class="album-art"><canvas id="art-a" width="110" height="110"></canvas><div class="album-label"></div></div></div></div>
-    <div class="track-info"><div class="track-text"><div class="track-name" id="title-a">No track loaded</div><div class="track-sub" id="status-a">—</div></div><button class="fav-np" id="fav-a">★</button></div>
+    <div class="track-info"><div class="track-text"><div class="track-name" id="title-a">No track loaded</div><div class="track-sub" id="status-a">—</div></div><button class="fav-np" id="lyrics-a" title="Lyrics" style="font-size:13px">♪</button><button class="fav-np" id="fav-a">★</button></div>
     <div class="wf-wrap" id="wfw-a"><canvas class="wf" id="wf-a"></canvas><div class="wf-head"></div><div class="cue-mark" id="cue-a"></div></div>
     <div class="transport"><button class="play-btn" id="play-a">▶</button><div class="prog-wrap"><input type="range" class="prog" id="prog-a" min="0" max="1000" value="0"><div class="time-row"><span id="time-a">0:00</span><span id="dur-a">0:00</span></div></div></div>
     <div class="eq-section" id="eq-a">
@@ -343,7 +355,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
     <div class="search-row"><input class="search-input" id="search-b" placeholder="Search YouTube..."><button class="srch-btn" id="srch-b">FIND</button></div>
     <div class="results" id="results-b"></div>
     <div class="platter-wrap"><div class="platter-outer"><div class="platter-ring"></div><div class="platter-ring2"></div><div class="album-art"><canvas id="art-b" width="110" height="110"></canvas><div class="album-label"></div></div></div></div>
-    <div class="track-info"><div class="track-text"><div class="track-name" id="title-b">No track loaded</div><div class="track-sub" id="status-b">—</div></div><button class="fav-np" id="fav-b">★</button></div>
+    <div class="track-info"><div class="track-text"><div class="track-name" id="title-b">No track loaded</div><div class="track-sub" id="status-b">—</div></div><button class="fav-np" id="lyrics-b" title="Lyrics" style="font-size:13px">♪</button><button class="fav-np" id="fav-b">★</button></div>
     <div class="wf-wrap" id="wfw-b"><canvas class="wf" id="wf-b"></canvas><div class="wf-head"></div><div class="cue-mark" id="cue-b"></div></div>
     <div class="transport"><button class="play-btn" id="play-b">▶</button><div class="prog-wrap"><input type="range" class="prog" id="prog-b" min="0" max="1000" value="0"><div class="time-row"><span id="time-b">0:00</span><span id="dur-b">0:00</span></div></div></div>
     <div class="eq-section" id="eq-b">
@@ -368,6 +380,22 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
     <div class="pad-row"><button class="pad-btn" id="cue-set-b">CUE</button><button class="pad-btn" id="cue-go-b">↩</button><button class="pad-btn" id="lb-b-1">1 BAR</button><button class="pad-btn" id="lb-b-2">2 BAR</button><button class="pad-btn" id="lb-b-4">4 BAR</button><button class="pad-btn" id="loff-b">OFF</button></div>
   </div>
 </div>
+
+<!-- LYRICS -->
+<div class="bottom-panel"><div class="panel-box" id="lyrics-panel" style="display:none">
+  <div class="panel-head">
+    <div style="display:flex;align-items:center;gap:10px;min-width:0">
+      <span class="panel-title">♪ LYRICS</span>
+      <span class="panel-sub" id="lyrics-track" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></span>
+      <span class="recs-badge" id="lyrics-deck-tag" style="display:inline-block;color:var(--orange);border-color:var(--orange)"></span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+      <button class="lyrics-sync-toggle" id="lyrics-sync-toggle" title="Auto-scroll">⤓ AUTO</button>
+      <button class="queue-clear" id="lyrics-min">MINIMIZE</button>
+    </div>
+  </div>
+  <div class="lyrics-body" id="lyrics-body"><div class="lyrics-msg">No track playing</div></div>
+</div></div>
 
 <!-- QUEUE -->
 <div class="bottom-panel"><div class="panel-box" id="queue-panel" style="display:none">
@@ -596,7 +624,6 @@ $('settings-overlay').addEventListener('click',function(e){if(e.target===this)cl
 $('yt-toggle').addEventListener('click',function(){var i=$('yt-input');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'Show':'Hide';});
 $('lfm-toggle').addEventListener('click',function(){var i=$('lfm-input');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'Show':'Hide';});
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closeSettings();});
-
 // ── YOUTUBE ──────────────────────────────────────────────────
 window.onYouTubeIframeAPIReady=function(){
   if(window._spinlabPlayers) window._spinlabPlayers();
@@ -1279,6 +1306,122 @@ $('setlist-name-input').addEventListener('keydown', function(e) {
   if(e.key==='Enter') $('btn-setlist-confirm').click();
   if(e.key==='Escape') $('btn-setlist-cancel').click();
 });
+
+// ── LYRICS ───────────────────────────────────────────────────
+var lyricsState = {open:false,minimized:false,deck:null,vid:null,synced:[],plain:'',isSynced:false,activeIdx:-1,autoScroll:true,fetchToken:0,forcedDeck:null};
+
+function openLyrics(){ lyricsState.open=true; lyricsState.minimized=false; $('lyrics-panel').style.display='block'; $('lyrics-body').classList.remove('minimized'); $('lyrics-min').textContent='MINIMIZE'; updateLyricsTarget(true); }
+function closeLyrics(){ lyricsState.minimized=true; $('lyrics-body').classList.add('minimized'); $('lyrics-min').textContent='EXPAND'; }
+function openLyricsForDeck(deck){
+  // if already open and showing this deck, toggle minimize instead
+  lyricsState.forcedDeck=deck;
+  if(lyricsState.open && lyricsState.minimized){ openLyrics(); return; }
+  openLyrics();
+}
+$('lyrics-a').addEventListener('click',function(){openLyricsForDeck('a');});
+$('lyrics-b').addEventListener('click',function(){openLyricsForDeck('b');});
+$('lyrics-min').addEventListener('click',function(){
+  if(lyricsState.minimized) openLyrics(); else closeLyrics();
+});
+$('lyrics-sync-toggle').addEventListener('click',function(){
+  lyricsState.autoScroll=!lyricsState.autoScroll;
+  this.classList.toggle('off',!lyricsState.autoScroll);
+  this.textContent=lyricsState.autoScroll?'⤓ AUTO':'⤓ MANUAL';
+});
+
+function pickLyricsDeck(){
+  if(lyricsState.forcedDeck && S[lyricsState.forcedDeck].vidId) return lyricsState.forcedDeck;
+  var aP=S.a.playing,bP=S.b.playing;
+  if(aP&&!bP) return 'a';
+  if(bP&&!aP) return 'b';
+  if(aP&&bP) return (S.a.xfVol>=S.b.xfVol)?'a':'b';
+  if(S.a.vidId) return 'a';
+  if(S.b.vidId) return 'b';
+  return null;
+}
+
+function updateLyricsTarget(force){
+  if(!lyricsState.open) return;
+  var deck=pickLyricsDeck();
+  if(!deck){
+    lyricsState.deck=null;lyricsState.vid=null;
+    $('lyrics-track').textContent='Lyrics';$('lyrics-deck-tag').textContent='';
+    $('lyrics-body').innerHTML='<div class="lyrics-msg">No track loaded</div>';
+    return;
+  }
+  if(force||deck!==lyricsState.deck||S[deck].vidId!==lyricsState.vid){
+    lyricsState.deck=deck;lyricsState.vid=S[deck].vidId;lyricsState.forcedDeck=null;
+    $('lyrics-deck-tag').textContent='Deck '+deck.toUpperCase();
+    fetchLyrics(deck);
+  }
+}
+
+function fetchLyrics(deck){
+  var s=S[deck],parsed=parseTitle(s.title),artist=parsed.artist,track=parsed.track;
+  $('lyrics-track').textContent=track+(artist?' — '+artist:'');
+  $('lyrics-body').innerHTML='<div class="lyrics-msg">Searching for lyrics…</div>';
+  lyricsState.synced=[];lyricsState.plain='';lyricsState.isSynced=false;lyricsState.activeIdx=-1;
+  var token=++lyricsState.fetchToken;
+  var durParam=s.duration?'&duration='+Math.round(s.duration):'';
+  var url='https://lrclib.net/api/get?artist_name='+encodeURIComponent(artist)+'&track_name='+encodeURIComponent(track)+durParam;
+  fetch(url).then(function(r){return r.ok?r.json():null;}).then(function(data){
+    if(token!==lyricsState.fetchToken)return;
+    if(data&&(data.syncedLyrics||data.plainLyrics)){renderLyrics(data);return;}
+    lrclibSearch(artist,track,token);
+  }).catch(function(){if(token===lyricsState.fetchToken)lrclibSearch(artist,track,token);});
+}
+
+function lrclibSearch(artist,track,token){
+  var url='https://lrclib.net/api/search?artist_name='+encodeURIComponent(artist)+'&track_name='+encodeURIComponent(track);
+  fetch(url).then(function(r){return r.ok?r.json():[];}).then(function(arr){
+    if(token!==lyricsState.fetchToken)return;
+    if(arr&&arr.length){var best=arr.find(function(x){return x.syncedLyrics||x.plainLyrics;})||arr[0];renderLyrics(best);}
+    else $('lyrics-body').innerHTML='<div class="lyrics-msg">No lyrics found for this track</div>';
+  }).catch(function(){if(token===lyricsState.fetchToken)$('lyrics-body').innerHTML='<div class="lyrics-msg">Could not load lyrics</div>';});
+}
+
+function parseSyncedLyrics(lrc){
+  var out=[];
+  lrc.split('\n').forEach(function(line){
+    var m=line.match(/^\[(\d+):(\d+)(?:\.(\d+))?\]\s*(.*)$/);
+    if(m){var time=parseInt(m[1])*60+parseInt(m[2])+(m[3]?parseFloat('0.'+m[3]):0);out.push({time:time,text:m[4].trim()||'♪'});}
+  });
+  return out;
+}
+
+function renderLyrics(data){
+  var body=$('lyrics-body');
+  if(data.syncedLyrics){lyricsState.synced=parseSyncedLyrics(data.syncedLyrics);lyricsState.isSynced=lyricsState.synced.length>0;}
+  if(!lyricsState.isSynced&&data.plainLyrics){
+    body.innerHTML='';var div=document.createElement('div');div.className='lyrics-plain';div.textContent=data.plainLyrics;body.appendChild(div);return;
+  }
+  if(lyricsState.isSynced){
+    body.innerHTML='';
+    lyricsState.synced.forEach(function(ln,i){
+      var el=document.createElement('div');el.className='lyrics-line synced';el.id='lyric-line-'+i;el.textContent=ln.text;
+      el.addEventListener('click',function(){var s=S[lyricsState.deck];if(s&&s.player&&s.player.seekTo)s.player.seekTo(ln.time,true);});
+      body.appendChild(el);
+    });
+  } else {
+    body.innerHTML='<div class="lyrics-msg">No lyrics found for this track</div>';
+  }
+}
+
+function updateLyricsScroll(){
+  if(!lyricsState.open||!lyricsState.isSynced||!lyricsState.deck)return;
+  var s=S[lyricsState.deck];
+  if(!s.player||!s.playing)return;
+  var cur;try{cur=s.player.getCurrentTime();}catch(e){return;}
+  var idx=-1;
+  for(var i=0;i<lyricsState.synced.length;i++){if(lyricsState.synced[i].time<=cur)idx=i;else break;}
+  if(idx!==lyricsState.activeIdx){
+    var old=$('lyric-line-'+lyricsState.activeIdx);if(old)old.classList.remove('active');
+    var el=$('lyric-line-'+idx);
+    if(el){el.classList.add('active');if(lyricsState.autoScroll)el.scrollIntoView({block:'center',behavior:'smooth'});}
+    lyricsState.activeIdx=idx;
+  }
+}
+
 function mainLoop(){
   ['a','b'].forEach(function(deck){
     var s=S[deck];
@@ -1311,6 +1454,7 @@ function mainLoop(){
     }catch(e){}
   });
   updateVU();
+  if(lyricsState.open){ updateLyricsTarget(false); if(!lyricsState.minimized) updateLyricsScroll(); }
   requestAnimationFrame(mainLoop);
 }
 
