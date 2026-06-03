@@ -131,7 +131,7 @@ input[type=range].tempo::-webkit-slider-thumb,input[type=range].vol::-webkit-sli
 .queue-list{max-height:162px;overflow-y:auto;display:flex;flex-direction:column}
 .queue-list::-webkit-scrollbar{width:3px}
 .queue-list::-webkit-scrollbar-thumb{background:var(--border2)}
-.queue-item{display:flex;align-items:center;gap:6px;padding:5px 8px;border-bottom:1px solid var(--border);font-size:10px}
+.queue-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--border);font-size:11px}
 .queue-item:last-child{border-bottom:none}
 .queue-item.played{opacity:0.4}
 .queue-item.played .queue-name{text-decoration:line-through;color:var(--muted)}
@@ -264,7 +264,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v3.5</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v3.6</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -304,10 +304,6 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
     <div class="tempo-row"><span class="tempo-label">TEMPO</span><input type="range" class="tempo" id="tempo-a" min="-8" max="8" value="0" step="0.1"><span class="tempo-val" id="tv-a">0.0%</span></div>
     <div class="vol-row"><span class="vol-label">CH VOL</span><input type="range" class="vol" id="vol-a" min="0" max="100" value="85"><span class="vol-val" id="vv-a">85</span></div>
     <div class="pad-row"><button class="pad-btn" id="cue-set-a">CUE</button><button class="pad-btn" id="cue-go-a">↩</button><button class="pad-btn" id="lb-a-1">1 BAR</button><button class="pad-btn" id="lb-a-2">2 BAR</button><button class="pad-btn" id="lb-a-4">4 BAR</button><button class="pad-btn" id="loff-a">OFF</button></div>
-    <div class="queue-panel" id="queue-panel-a">
-      <div class="queue-header"><span class="queue-title">QUEUE</span><span class="queue-count" id="queue-count-a">0 tracks</span><button class="queue-clear" id="queue-clear-a">CLEAR</button></div>
-      <div class="queue-list" id="queue-list-a"></div>
-    </div>
   </div>
 
   <!-- MIXER -->
@@ -368,12 +364,20 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
     <div class="tempo-row"><span class="tempo-label">TEMPO</span><input type="range" class="tempo" id="tempo-b" min="-8" max="8" value="0" step="0.1"><span class="tempo-val" id="tv-b">0.0%</span></div>
     <div class="vol-row"><span class="vol-label">CH VOL</span><input type="range" class="vol" id="vol-b" min="0" max="100" value="85"><span class="vol-val" id="vv-b">85</span></div>
     <div class="pad-row"><button class="pad-btn" id="cue-set-b">CUE</button><button class="pad-btn" id="cue-go-b">↩</button><button class="pad-btn" id="lb-b-1">1 BAR</button><button class="pad-btn" id="lb-b-2">2 BAR</button><button class="pad-btn" id="lb-b-4">4 BAR</button><button class="pad-btn" id="loff-b">OFF</button></div>
-    <div class="queue-panel" id="queue-panel-b">
-      <div class="queue-header"><span class="queue-title">QUEUE</span><span class="queue-count" id="queue-count-b">0 tracks</span><button class="queue-clear" id="queue-clear-b">CLEAR</button></div>
-      <div class="queue-list" id="queue-list-b"></div>
-    </div>
   </div>
 </div>
+
+<!-- QUEUE -->
+<div class="bottom-panel"><div class="panel-box" id="queue-panel" style="display:none">
+  <div class="panel-head">
+    <span class="panel-title">≡ QUEUE</span>
+    <div style="display:flex;gap:10px;align-items:center">
+      <span class="panel-sub" id="queue-count">0 tracks</span>
+      <button class="queue-clear" id="queue-clear">CLEAR</button>
+    </div>
+  </div>
+  <div class="queue-list" id="queue-list" style="max-height:220px"></div>
+</div></div>
 
 <!-- CRATES -->
 <div class="bottom-panel"><div class="panel-box">
@@ -520,7 +524,7 @@ window.addEventListener('message', function(e){
 function initKnobs(){ buildEQ('a'); buildEQ('b'); }
 var masterVol    = 0.8;
 var favs         = [];
-var queues       = {a:[], b:[]};
+var queue        = [];
 var queueDrag    = null;
 var recsActive   = 'a';
 var recsCache    = {a:null, b:null};
@@ -597,7 +601,7 @@ function onYTS(e,deck){
     $(('led-'+deck)).classList.remove('on'); s.autoFadeTriggered=false;
     if(e.data===YT.PlayerState.ENDED){
       var endedVid = s.vidId;
-      if(endedVid) markPlayed(deck,endedVid);
+      if(endedVid) markPlayed(endedVid);
       setTimeout(function(){shiftQueue(deck);},500);
     }
   }
@@ -625,7 +629,7 @@ function doSearch(deck){
       var vid=item.id.videoId, ttl=decodeHtml(item.snippet.title);
       var div=document.createElement('div'); div.className='result-item';
       var sp=document.createElement('span'); sp.className='result-title'; sp.textContent=ttl;
-      var q_btn=makeQBtn(deck,vid,ttl);
+      var q_btn=makeQBtn(vid,ttl);
       var star=document.createElement('span'); star.className='ri-star'+(isFav(vid)?' on':''); star.textContent='★';
       star.addEventListener('click',function(e){e.stopPropagation();toggleFav(vid,ttl);star.classList.toggle('on',isFav(vid));});
       div.appendChild(sp); div.appendChild(q_btn); div.appendChild(star);
@@ -817,116 +821,77 @@ function renderCrates(){
     var acts=document.createElement('div');acts.className='crate-acts';
     var ba=document.createElement('button');ba.className='crate-act la';ba.textContent='A';ba.addEventListener('click',function(){loadTrack('a',f.vid,f.title);});
     var bb=document.createElement('button');bb.className='crate-act lb';bb.textContent='B';bb.addEventListener('click',function(){loadTrack('b',f.vid,f.title);});
-    var qa=makeQBtn('a',f.vid,f.title);qa.style.height='22px';
-    var qb=makeQBtn('b',f.vid,f.title);qb.style.height='22px';
+    var qa=makeQBtn(f.vid,f.title);qa.style.height='22px';
     var bd=document.createElement('button');bd.className='crate-act del';bd.textContent='✕';bd.addEventListener('click',function(){favs=favs.filter(function(x){return x.vid!==f.vid;});saveFavs();renderCrates();updateFavBtn('a');updateFavBtn('b');});
-    acts.appendChild(ba);acts.appendChild(bb);acts.appendChild(qa);acts.appendChild(qb);acts.appendChild(bd);
+    acts.appendChild(ba);acts.appendChild(bb);acts.appendChild(qa);acts.appendChild(bd);
     row.appendChild(star);row.appendChild(name);row.appendChild(acts);grid.appendChild(row);
   });
 }
 
 // ── QUEUES ───────────────────────────────────────────────────
-function addToQueue(deck,vid,title){
-  if(queues[deck].some(function(t){return t.vid===vid&&!t.played;}))return;
-  queues[deck].push({vid:vid,title:title,played:false});
-  renderQueue(deck);
+function addToQueue(vid,title){
+  if(queue.some(function(t){return t.vid===vid&&!t.played;}))return;
+  queue.push({vid:vid,title:title,played:false});
+  renderQueue();
 }
-function removeFromQueue(deck,idx){queues[deck].splice(idx,1);renderQueue(deck);}
-function clearQueue(deck){queues[deck]=[];renderQueue(deck);}
-function markPlayed(deck,vid){queues[deck].forEach(function(t){if(t.vid===vid)t.played=true;});renderQueue(deck);}
-function shiftQueue(deck){var next=queues[deck].find(function(t){return !t.played;});if(!next)return false;loadTrack(deck,next.vid,next.title);return true;}
-$('queue-clear-a').addEventListener('click',function(){clearQueue('a');});
-$('queue-clear-b').addEventListener('click',function(){clearQueue('b');});
-function makeQBtn(deck,vid,title){
-  var btn=document.createElement('button');btn.className='q-btn';btn.textContent='+Q';btn.title='Add to Deck '+deck.toUpperCase()+' queue';
-  btn.addEventListener('click',function(e){e.stopPropagation();addToQueue(deck,vid,title);btn.textContent='✓';btn.style.color='var(--green)';btn.style.borderColor='var(--green)';setTimeout(function(){btn.textContent='+Q';btn.style.color='';btn.style.borderColor='';},800);});
+function removeFromQueue(idx){queue.splice(idx,1);renderQueue();}
+function clearQueue(){queue=[];renderQueue();}
+function markPlayed(vid){queue.forEach(function(t){if(t.vid===vid)t.played=true;});renderQueue();}
+function shiftQueue(deck){
+  // load the next unplayed track onto the given deck
+  var next=queue.find(function(t){return !t.played;});
+  if(!next)return false;
+  loadTrack(deck,next.vid,next.title);
+  return true;
+}
+$('queue-clear').addEventListener('click',function(){clearQueue();});
+
+function makeQBtn(vid,title){
+  var btn=document.createElement('button');btn.className='q-btn';btn.textContent='+Q';btn.title='Add to queue';
+  btn.addEventListener('click',function(e){e.stopPropagation();addToQueue(vid,title);btn.textContent='\u2713';btn.style.color='var(--green)';btn.style.borderColor='var(--green)';setTimeout(function(){btn.textContent='+Q';btn.style.color='';btn.style.borderColor='';},800);});
   return btn;
 }
-function renderQueue(deck){
-  var panel=$(('queue-panel-'+deck)),list=$(('queue-list-'+deck)),count=$(('queue-count-'+deck)),q=queues[deck];
-  var unplayed=q.filter(function(t){return !t.played;}).length;
-  count.textContent=unplayed+' up'+(q.length-unplayed>0?' · '+(q.length-unplayed)+' played':'');
-  panel.style.display=q.length?'flex':'none';
+
+function renderQueue(){
+  var panel=$('queue-panel'),list=$('queue-list'),count=$('queue-count');
+  var unplayed=queue.filter(function(t){return !t.played;}).length;
+  count.textContent=unplayed+' up'+(queue.length-unplayed>0?' \u00b7 '+(queue.length-unplayed)+' played':'');
+  panel.style.display=queue.length?'block':'none';
   list.innerHTML='';
-  if(!q.length){
-    var e=document.createElement('div');e.className='queue-empty';e.textContent='Queue is empty';
-    list.appendChild(e);
-    // still allow dropping onto an empty queue from the other deck
-    setupListDrop(list, deck);
-    return;
-  }
+  if(!queue.length){var e=document.createElement('div');e.className='queue-empty';e.textContent='Queue is empty';list.appendChild(e);return;}
   var upNum=0;
-  q.forEach(function(track,i){
+  queue.forEach(function(track,i){
     var item=document.createElement('div');item.className='queue-item'+(track.played?' played':'');
     item.draggable=true;
-    var handle=document.createElement('span');handle.className='queue-drag';handle.textContent='⠿';handle.title='Drag to reorder or move to other deck';
+    var handle=document.createElement('span');handle.className='queue-drag';handle.textContent='\u283f';handle.title='Drag to reorder';
     var pos=document.createElement('span');pos.className='queue-pos';
-    if(track.played){pos.textContent='✓';}else{upNum++;pos.textContent=upNum+'.';}
+    if(track.played){pos.textContent='\u2713';}else{upNum++;pos.textContent=upNum+'.';}
     var name=document.createElement('span');name.className='queue-name';name.textContent=track.title;name.title=track.title;
-    var load=document.createElement('button');load.className='q-btn';load.textContent='LOAD';
-    load.style.color=track.played?'var(--muted)':'var(--orange)';
-    load.style.borderColor=track.played?'var(--border2)':'var(--orange)';
-    var rm=document.createElement('button');rm.className='queue-rm';rm.textContent='✕';
-    (function(t,idx,d){
-      load.addEventListener('click',function(e){e.stopPropagation();t.played=false;loadTrack(d,t.vid,t.title);renderQueue(d);});
-      rm.addEventListener('click',function(e){e.stopPropagation();removeFromQueue(d,idx);});
-    })(track,i,deck);
-    (function(idx,d){
-      item.addEventListener('dragstart',function(e){
-        queueDrag = {deck:d, idx:idx};
-        e.dataTransfer.effectAllowed='move';
-        item.style.opacity='0.4';
-      });
-      item.addEventListener('dragend',function(){
-        item.style.opacity='';
-        document.querySelectorAll('.queue-item').forEach(function(el){el.classList.remove('drag-over');});
-      });
-      item.addEventListener('dragover',function(e){
-        e.preventDefault();
-        e.dataTransfer.dropEffect='move';
-        item.classList.add('drag-over');
-      });
+    var loadA=document.createElement('button');loadA.className='q-btn';loadA.textContent='\u2192 A';loadA.style.color='var(--orange)';loadA.style.borderColor='var(--orange)';
+    var loadB=document.createElement('button');loadB.className='q-btn';loadB.textContent='\u2192 B';loadB.style.color='var(--orange)';loadB.style.borderColor='var(--orange)';
+    var rm=document.createElement('button');rm.className='queue-rm';rm.textContent='\u2715';
+    (function(t,idx){
+      loadA.addEventListener('click',function(e){e.stopPropagation();t.played=false;loadTrack('a',t.vid,t.title);renderQueue();});
+      loadB.addEventListener('click',function(e){e.stopPropagation();t.played=false;loadTrack('b',t.vid,t.title);renderQueue();});
+      rm.addEventListener('click',function(e){e.stopPropagation();removeFromQueue(idx);});
+      item.addEventListener('dragstart',function(e){queueDrag=idx;e.dataTransfer.effectAllowed='move';item.style.opacity='0.4';});
+      item.addEventListener('dragend',function(){item.style.opacity='';document.querySelectorAll('.queue-item').forEach(function(el){el.classList.remove('drag-over');});});
+      item.addEventListener('dragover',function(e){e.preventDefault();e.dataTransfer.dropEffect='move';item.classList.add('drag-over');});
       item.addEventListener('dragleave',function(){item.classList.remove('drag-over');});
       item.addEventListener('drop',function(e){
-        e.preventDefault();
-        item.classList.remove('drag-over');
-        if(!queueDrag) return;
-        moveQueueItem(queueDrag.deck, queueDrag.idx, d, idx);
-        queueDrag = null;
+        e.preventDefault();item.classList.remove('drag-over');
+        if(queueDrag===null||queueDrag===idx)return;
+        var moved=queue.splice(queueDrag,1)[0];
+        var dest=idx; if(queueDrag<idx)dest--;
+        queue.splice(dest,0,moved);
+        queueDrag=null;renderQueue();
       });
-    })(i,deck);
-    item.appendChild(handle);item.appendChild(pos);item.appendChild(name);item.appendChild(load);item.appendChild(rm);
+    })(track,i);
+    item.appendChild(handle);item.appendChild(pos);item.appendChild(name);item.appendChild(loadA);item.appendChild(loadB);item.appendChild(rm);
     list.appendChild(item);
   });
-  setupListDrop(list, deck);
   var first=list.querySelector('.queue-item:not(.played)');
   if(first)first.scrollIntoView({block:'nearest'});
-}
-
-// allow dropping onto the list container itself (e.g. empty area / end of list)
-function setupListDrop(list, deck) {
-  list.addEventListener('dragover', function(e){ e.preventDefault(); e.dataTransfer.dropEffect='move'; });
-  list.addEventListener('drop', function(e){
-    e.preventDefault();
-    if(!queueDrag) return;
-    // dropped on the list but not on a specific item — append to end
-    if(e.target===list || e.target.className==='queue-empty') {
-      moveQueueItem(queueDrag.deck, queueDrag.idx, deck, queues[deck].length);
-      queueDrag = null;
-    }
-  });
-}
-
-// move a track within a queue or across to the other deck's queue
-function moveQueueItem(srcDeck, srcIdx, destDeck, destIdx) {
-  if(srcDeck===destDeck && srcIdx===destIdx) return;
-  var moved = queues[srcDeck].splice(srcIdx, 1)[0];
-  if(!moved) return;
-  // if moving down within same queue, the splice shifted indices
-  if(srcDeck===destDeck && srcIdx < destIdx) destIdx--;
-  queues[destDeck].splice(destIdx, 0, moved);
-  renderQueue(srcDeck);
-  if(destDeck!==srcDeck) renderQueue(destDeck);
 }
 
 // ── RECOMMENDATIONS ──────────────────────────────────────────
@@ -1009,8 +974,7 @@ function renderRecs(items){
       var acts=document.createElement('div');acts.className='rec-acts';
       var ba=document.createElement('button');ba.className='rec-act a';ba.textContent='→ A';
       var bb=document.createElement('button');bb.className='rec-act b';bb.textContent='→ B';
-      var qa=document.createElement('button');qa.className='q-btn';qa.textContent='+Q A';
-      var qb=document.createElement('button');qb.className='q-btn';qb.textContent='+Q B';
+      var qa=document.createElement('button');qa.className='q-btn';qa.textContent='+Q';
       (function(it){
         function findAndLoad(deck,btn){
           var orig=btn.textContent;btn.textContent='...';
@@ -1021,20 +985,19 @@ function renderRecs(items){
             else showRecsMsg('Could not find "'+it.track+'" on YouTube');
           });
         }
-        function findAndQueue(deck,btn){
+        function findAndQueue(btn){
           var orig=btn.textContent;btn.textContent='...';
           ytSearch(it.artist+' '+it.track).then(function(results){
             btn.textContent='✓';setTimeout(function(){btn.textContent=orig;},800);
             var valid=results.filter(function(i){return i.id&&i.id.videoId&&i.snippet;});
-            if(valid.length){addToQueue(deck,valid[0].id.videoId,decodeHtml(valid[0].snippet.title));}
+            if(valid.length){addToQueue(valid[0].id.videoId,decodeHtml(valid[0].snippet.title));}
           });
         }
         ba.addEventListener('click',function(e){e.stopPropagation();findAndLoad('a',ba);});
         bb.addEventListener('click',function(e){e.stopPropagation();findAndLoad('b',bb);});
-        qa.addEventListener('click',function(e){e.stopPropagation();findAndQueue('a',qa);});
-        qb.addEventListener('click',function(e){e.stopPropagation();findAndQueue('b',qb);});
+        qa.addEventListener('click',function(e){e.stopPropagation();findAndQueue(qa);});
       })(item);
-      acts.appendChild(ba);acts.appendChild(bb);acts.appendChild(qa);acts.appendChild(qb);
+      acts.appendChild(ba);acts.appendChild(bb);acts.appendChild(qa);
       card.appendChild(info);card.appendChild(acts);
     } else {
       var vid=item.id.videoId,title=decodeHtml(item.snippet.title),channel=item.snippet.channelTitle||'';
@@ -1047,9 +1010,9 @@ function renderRecs(items){
       var acts=document.createElement('div');acts.className='rec-acts';
       var ba=document.createElement('button');ba.className='rec-act a';ba.textContent='→ A';ba.addEventListener('click',function(){loadTrack('a',vid,title);});
       var bb=document.createElement('button');bb.className='rec-act b';bb.textContent='→ B';bb.addEventListener('click',function(){loadTrack('b',vid,title);});
-      var qa=makeQBtn('a',vid,title);var qb=makeQBtn('b',vid,title);
+      var qa=makeQBtn(vid,title);
       var bs=document.createElement('button');bs.className='rec-act st'+(isFav(vid)?' on':'');bs.textContent='★';bs.addEventListener('click',function(){toggleFav(vid,title);bs.classList.toggle('on',isFav(vid));});
-      acts.appendChild(ba);acts.appendChild(bb);acts.appendChild(qa);acts.appendChild(qb);acts.appendChild(bs);
+      acts.appendChild(ba);acts.appendChild(bb);acts.appendChild(qa);acts.appendChild(bs);
       card.appendChild(img);card.appendChild(info);card.appendChild(acts);
     }
     grid.appendChild(card);
@@ -1102,13 +1065,17 @@ function startFade(src,dest,btn,status,overrideDur){
       S.a.autoFadeTriggered=false;S.b.autoFadeTriggered=false;
       var fadedVid=S[src].vidId;
       if(S[src].player)S[src].player.pauseVideo();
-      if(fadedVid)markPlayed(src,fadedVid);
+      if(fadedVid)markPlayed(fadedVid);
       setTimeout(function(){shiftQueue(src);},800);
     }
   },1000/20);
 }
 
 function autoLoadNext(deck,srcDeck,cb){
+  // first try the shared queue
+  var next=queue.find(function(t){return !t.played;});
+  if(next){ loadTrack(deck,next.vid,next.title); cb(true); return; }
+  // otherwise fall back to recommendations
   var cache=recsCache[srcDeck];
   if(cache&&cache.length){var pick=cache[Math.floor(Math.random()*Math.min(3,cache.length))];loadTrack(deck,pick.id.videoId,decodeHtml(pick.snippet.title));cb(true);return;}
   var parsed=parseTitle(S[srcDeck].title);
@@ -1140,10 +1107,8 @@ function captureSetlist(name) {
     if(S[d].vidId) tracks.push({vid:S[d].vidId, title:S[d].title, deck:'Deck '+d.toUpperCase()});
   });
   // queued tracks (unplayed only)
-  ['a','b'].forEach(function(d) {
-    queues[d].forEach(function(t) {
-      if(!t.played) tracks.push({vid:t.vid, title:t.title, deck:'Queue '+d.toUpperCase()});
-    });
+  queue.forEach(function(t) {
+    if(!t.played) tracks.push({vid:t.vid, title:t.title, deck:'Queue'});
   });
   if(!tracks.length) { alert('No tracks loaded or queued to save!'); return; }
   var sl = {
@@ -1171,30 +1136,23 @@ function loadSetlist(sl) {
       else cb(null, t.title);
     });
   }
-  // separate by original placement
   var deckA = sl.tracks.filter(function(t){return t.deck==='Deck A';});
   var deckB = sl.tracks.filter(function(t){return t.deck==='Deck B';});
-  var queueA = sl.tracks.filter(function(t){return t.deck==='Queue A';});
-  var queueB = sl.tracks.filter(function(t){return t.deck==='Queue B';});
-  // legacy setlists with no deck info — treat all as queue A
-  var legacy = sl.tracks.filter(function(t){return !t.deck;});
+  // everything else (Queue, Queue A, Queue B, or legacy no-deck) goes to the single queue
+  var queued = sl.tracks.filter(function(t){return t.deck!=='Deck A' && t.deck!=='Deck B';});
 
   // load deck A track only if deck A isn't currently playing
   if(deckA.length && !S.a.playing) {
     resolve(deckA[0], function(vid,title){ if(vid) loadTrack('a',vid,title); });
-  } else if(deckA.length && S.a.playing) {
-    // deck busy — send to queue instead
-    deckA.forEach(function(t){ resolve(t,function(vid,title){ if(vid) addToQueue('a',vid,title); }); });
+  } else if(deckA.length) {
+    deckA.forEach(function(t){ resolve(t,function(vid,title){ if(vid) addToQueue(vid,title); }); });
   }
   if(deckB.length && !S.b.playing) {
     resolve(deckB[0], function(vid,title){ if(vid) loadTrack('b',vid,title); });
-  } else if(deckB.length && S.b.playing) {
-    deckB.forEach(function(t){ resolve(t,function(vid,title){ if(vid) addToQueue('b',vid,title); }); });
+  } else if(deckB.length) {
+    deckB.forEach(function(t){ resolve(t,function(vid,title){ if(vid) addToQueue(vid,title); }); });
   }
-  // queues restore to their own decks
-  queueA.forEach(function(t){ resolve(t,function(vid,title){ if(vid) addToQueue('a',vid,title); }); });
-  queueB.forEach(function(t){ resolve(t,function(vid,title){ if(vid) addToQueue('b',vid,title); }); });
-  legacy.forEach(function(t){ resolve(t,function(vid,title){ if(vid) addToQueue('a',vid,title); }); });
+  queued.forEach(function(t){ resolve(t,function(vid,title){ if(vid) addToQueue(vid,title); }); });
 }
 
 function exportSetlist(sl) {
@@ -1339,7 +1297,7 @@ function mainLoop(){
 }
 
 // ── BOOT ─────────────────────────────────────────────────────
-function boot(){buildVU();initKnobs();initArt('a');initArt('b');updateXF(50);applyVols();loadFavs();loadSetlists();checkBanner();mainLoop();if(!YT_KEY&&!API_URL)setTimeout(openSettings,600);if(API_URL){fetch(API_URL+'/health').catch(function(){});}}
+function boot(){buildVU();initKnobs();initArt('a');initArt('b');updateXF(50);applyVols();loadFavs();loadSetlists();renderQueue();checkBanner();mainLoop();if(!YT_KEY&&!API_URL)setTimeout(openSettings,600);if(API_URL){fetch(API_URL+'/health').catch(function(){});}}
 // expose player init globally so onYouTubeIframeAPIReady can reach it
 window._spinlabPlayers = function(){S.a.player=mkPlayer('yt-a','a');S.b.player=mkPlayer('yt-b','b');};
 window.applyPreset = function(deck,name){ applyPreset(deck,name); };
