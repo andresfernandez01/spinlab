@@ -264,7 +264,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v3.3</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v3.4</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -1136,26 +1136,37 @@ function deleteSetlist(id) {
 }
 
 function loadSetlist(sl) {
-  var toLoad = sl.tracks.slice();
-  var loaded = 0;
-  function loadNext(t, callback) {
-    if(t.vid) { callback(t.vid, t.title); return; }
-    // no video ID — search for it
+  function resolve(t, cb) {
+    if(t.vid) { cb(t.vid, t.title); return; }
     ytSearch(t.title).then(function(results) {
-      if(results.length && results[0].id && results[0].id.videoId) {
-        t.vid = results[0].id.videoId;
-        callback(t.vid, t.title);
-      } else callback(null, t.title);
+      if(results.length && results[0].id && results[0].id.videoId) cb(results[0].id.videoId, t.title);
+      else cb(null, t.title);
     });
   }
-  toLoad.forEach(function(t, i) {
-    loadNext(t, function(vid, title) {
-      if(!vid) return;
-      if(i===0) loadTrack('a', vid, title);
-      else if(i===1) loadTrack('b', vid, title);
-      else addToQueue('a', vid, title);
-    });
-  });
+  // separate by original placement
+  var deckA = sl.tracks.filter(function(t){return t.deck==='Deck A';});
+  var deckB = sl.tracks.filter(function(t){return t.deck==='Deck B';});
+  var queueA = sl.tracks.filter(function(t){return t.deck==='Queue A';});
+  var queueB = sl.tracks.filter(function(t){return t.deck==='Queue B';});
+  // legacy setlists with no deck info — treat all as queue A
+  var legacy = sl.tracks.filter(function(t){return !t.deck;});
+
+  // load deck A track only if deck A isn't currently playing
+  if(deckA.length && !S.a.playing) {
+    resolve(deckA[0], function(vid,title){ if(vid) loadTrack('a',vid,title); });
+  } else if(deckA.length && S.a.playing) {
+    // deck busy — send to queue instead
+    deckA.forEach(function(t){ resolve(t,function(vid,title){ if(vid) addToQueue('a',vid,title); }); });
+  }
+  if(deckB.length && !S.b.playing) {
+    resolve(deckB[0], function(vid,title){ if(vid) loadTrack('b',vid,title); });
+  } else if(deckB.length && S.b.playing) {
+    deckB.forEach(function(t){ resolve(t,function(vid,title){ if(vid) addToQueue('b',vid,title); }); });
+  }
+  // queues restore to their own decks
+  queueA.forEach(function(t){ resolve(t,function(vid,title){ if(vid) addToQueue('a',vid,title); }); });
+  queueB.forEach(function(t){ resolve(t,function(vid,title){ if(vid) addToQueue('b',vid,title); }); });
+  legacy.forEach(function(t){ resolve(t,function(vid,title){ if(vid) addToQueue('a',vid,title); }); });
 }
 
 function exportSetlist(sl) {
