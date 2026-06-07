@@ -285,7 +285,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v5.5</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v5.6</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -353,6 +353,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
       <div class="fade-time-row"><span class="fade-time-label">TIME</span><input type="range" class="fade-time-slider" id="fade-time" min="3" max="60" value="15"><span class="fade-time-val" id="fade-time-val">15s</span></div>
       <button class="fade-btn" id="fade-btn">⇄ FADE NOW</button>
       <button class="fade-btn" id="auto-fade-btn" style="color:var(--muted)">AUTO FADE: OFF</button>
+      <button class="fade-btn" id="auto-playlist-btn" style="color:var(--muted)" title="When the queue runs low, auto-add a recommended track (requires Auto Fade on)">AUTO PLAYLIST: OFF</button>
       <div class="fade-status" id="fade-status"></div>
     </div>
   </div>
@@ -621,6 +622,10 @@ var recsTimer    = {a:null, b:null};
 var fadeInterval = null;
 var fadeDuration = 15;
 var autoFadeEnabled = false;
+var autoPlaylistEnabled = false;
+var lastQueuedVid = null;
+var lastQueuedTitle = null;
+var autoPlaylistBusy = false;
 
 function $(id) { return document.getElementById(id); }
 function decodeHtml(str) { var t=document.createElement('textarea'); t.innerHTML=str; return t.value; }
@@ -980,6 +985,7 @@ function renderCrates(){
 function addToQueue(vid,title){
   if(queue.some(function(t){return t.vid===vid&&!t.played;}))return;
   queue.push({vid:vid,title:title,played:false});
+  lastQueuedVid=vid; lastQueuedTitle=title;
   renderQueue();
 }
 function removeFromQueue(idx){queue.splice(idx,1);renderQueue();}
@@ -1206,6 +1212,73 @@ $('auto-fade-btn').addEventListener('click',function(){
   if(autoFadeEnabled){S.a.autoFadeTriggered=false;S.b.autoFadeTriggered=false;$('fade-status').textContent='Watching for end of track...';}
   else $('fade-status').textContent='';
 });
+$('auto-playlist-btn').addEventListener('click',function(){
+  autoPlaylistEnabled=!autoPlaylistEnabled;
+  this.textContent='AUTO PLAYLIST: '+(autoPlaylistEnabled?'ON':'OFF');
+  this.style.color=autoPlaylistEnabled?'var(--green)':'var(--muted)';
+  this.style.borderColor=autoPlaylistEnabled?'var(--green)':'var(--border)';
+  this.style.background=autoPlaylistEnabled?'linear-gradient(180deg,#1a3a28,#0a2018)':'linear-gradient(180deg,#363636,#272727)';
+  if(autoPlaylistEnabled){ maybeAutoReplenish(); }
+});
+
+// when enabled (and auto-fade is on), keep at least 1 unplayed track in the queue
+// by adding a recommendation based on the last-queued track
+function maybeAutoReplenish(){
+  if(!autoPlaylistEnabled || !autoFadeEnabled) return;
+  if(autoPlaylistBusy) return;
+  var unplayed = queue.filter(function(t){return !t.played;}).length;
+  if(unplayed >= 1) return; // still have something queued
+  // seed videoId: last queued track, else whatever is playing
+  var seedVid = lastQueuedVid;
+  var seedTitle = lastQueuedTitle;
+  if(!seedVid){
+    var pd = S.a.playing ? 'a' : S.b.playing ? 'b' : (S.a.vidId?'a':S.b.vidId?'b':null);
+    if(pd){ seedVid = S[pd].vidId; seedTitle = S[pd].title; }
+  }
+  if(!seedVid) return;
+  autoPlaylistBusy = true;
+  $('fade-status').textContent='Auto-playlist: finding a track…';
+  recommendForSeed(seedVid, seedTitle, function(rec){
+    autoPlaylistBusy = false;
+    if(rec && rec.vid){
+      addToQueue(rec.vid, rec.title);
+      $('fade-status').textContent='Auto-playlist added: '+rec.title.slice(0,40);
+    } else {
+      $('fade-status').textContent='Auto-playlist: no track found';
+    }
+  });
+}
+
+// fetch a single recommended track (vid+title) for a seed videoId
+function recommendForSeed(seedVid, seedTitle, cb){
+  function notQueued(vid){ return !queue.some(function(t){return t.vid===vid;}); }
+  // prefer the SPINLAB API (YT Music recs by videoId)
+  if(API_URL){
+    fetch(API_URL+'/recommendations?videoId='+seedVid+'&limit=10')
+      .then(function(r){return r.json();})
+      .then(function(d){
+        var list=(d&&d.tracks)?d.tracks:[];
+        var pick=list.find(function(t){return t.videoId && notQueued(t.videoId);});
+        if(pick){ cb({vid:pick.videoId, title:pick.title+(pick.artist?' — '+pick.artist:'')}); return; }
+        recommendViaSearch(seedTitle, notQueued, cb);
+      })
+      .catch(function(){ recommendViaSearch(seedTitle, notQueued, cb); });
+    return;
+  }
+  recommendViaSearch(seedTitle, notQueued, cb);
+}
+
+function recommendViaSearch(seedTitle, notQueued, cb){
+  var p=parseTitle(seedTitle||'');
+  var q=(p.artist||seedTitle||'').trim();
+  if(!q){ cb(null); return; }
+  ytSearch(q+' songs').then(function(items){
+    var valid=(items||[]).filter(function(i){return i.id&&i.id.videoId&&i.snippet&&notQueued(i.id.videoId)&&!isComp(i.snippet.title);});
+    if(!valid.length){ cb(null); return; }
+    var pick=valid[Math.floor(Math.random()*Math.min(4,valid.length))];
+    cb({vid:pick.id.videoId, title:decodeHtml(pick.snippet.title)});
+  }).catch(function(){ cb(null); });
+}
 
 function triggerFade(){
   var src=S.a.playing?'a':S.b.playing?'b':null,dest=src==='a'?'b':'a';
@@ -1710,6 +1783,7 @@ function mainLoop(){
   });
   updateVU();
   if(lyricsState.open){ updateLyricsTarget(false); if(!lyricsState.minimized) updateLyricsScroll(); }
+  if(autoPlaylistEnabled && autoFadeEnabled) maybeAutoReplenish();
   requestAnimationFrame(mainLoop);
 }
 
