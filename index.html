@@ -278,7 +278,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v4.6</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v4.7</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -890,17 +890,16 @@ function addToQueue(vid,title){
 function removeFromQueue(idx){queue.splice(idx,1);renderQueue();}
 function clearQueue(){queue=[];renderQueue();}
 function markPlayed(vid, title){
-  // find the position just after the last currently-played track
   function playedInsertIndex(){
     var idx=0;
     for(var i=0;i<queue.length;i++){ if(queue[i].played) idx=i+1; else break; }
     return idx;
   }
-  // is this track already in the queue (unplayed)?
+  // is this track in the queue (unplayed — reserved or not)?
   var existingIdx = queue.findIndex(function(t){return t.vid===vid && !t.played;});
   if(existingIdx !== -1){
     var item = queue.splice(existingIdx, 1)[0];
-    item.played = true;
+    item.played = true; item.reserved = null;
     queue.splice(playedInsertIndex(), 0, item);
     renderQueue();
     return;
@@ -915,11 +914,10 @@ function markPlayed(vid, title){
   }
 }
 function shiftQueue(deck){
-  // load the next unplayed track onto the deck and commit it (mark played +
-  // move into the played group) so no other path can grab the same track.
-  var next=queue.find(function(t){return !t.played;});
+  // load the next unplayed, unreserved track onto the deck and commit it.
+  var next=queue.find(function(t){return !t.played && !t.reserved;});
   if(!next)return false;
-  next.played=true;
+  next.played=true; next.reserved=null;
   moveToPlayedGroup(next);
   loadTrack(deck,next.vid,next.title);
   renderQueue();
@@ -946,8 +944,9 @@ function renderQueue(){
     item.draggable=true;
     var handle=document.createElement('span');handle.className='queue-drag';handle.textContent='\u283f';handle.title='Drag to reorder';
     var pos=document.createElement('span');pos.className='queue-pos';
-    if(track.played){pos.textContent='\u2713';}else{upNum++;pos.textContent=upNum+'.';}
+    if(track.played){pos.textContent='\u2713';}else if(track.reserved){pos.textContent='\u25b8';pos.style.color='var(--orange)';pos.title='Cued on Deck '+track.reserved.toUpperCase();upNum++;}else{upNum++;pos.textContent=upNum+'.';}
     var name=document.createElement('span');name.className='queue-name';name.textContent=track.title;name.title=track.title;
+    if(track.reserved){name.style.color='var(--orange)';}
     var loadA=document.createElement('button');loadA.className='q-btn';loadA.textContent='\u2192 A';loadA.style.color='var(--orange)';loadA.style.borderColor='var(--orange)';
     var loadB=document.createElement('button');loadB.className='q-btn';loadB.textContent='\u2192 B';loadB.style.color='var(--orange)';loadB.style.borderColor='var(--orange)';
     var rm=document.createElement('button');rm.className='queue-rm';rm.textContent='\u2715';
@@ -1149,25 +1148,43 @@ function startFade(src,dest,btn,status,overrideDur){
       var fadedVid=S[src].vidId, fadedTitle=S[src].title;
       if(S[src].player)S[src].player.pauseVideo();
       if(fadedVid)markPlayed(fadedVid, fadedTitle);
-      // NOTE: do not pre-load the next track here — the next auto-fade
-      // (or manual load) handles loading. Pre-loading here caused the same
-      // queued track to be grabbed twice (loaded onto both decks).
+      // pre-load the next unplayed queue track onto the freed deck so it's
+      // ready to fade into. This commits it (marks played) so it can't be
+      // grabbed again by the next fade.
+      setTimeout(function(){ preloadNext(src); },800);
     }
   },1000/20);
 }
 
+// pre-load the next unplayed queue track onto a deck WITHOUT marking it
+// played yet. The track stays "up next" but is reserved to this deck so
+// other load paths skip it. It's marked played only when it actually plays.
+function preloadNext(deck){
+  // skip tracks already reserved/loaded on either deck
+  var next=queue.find(function(t){return !t.played && !t.reserved;});
+  if(!next)return false;
+  next.reserved=deck;
+  loadTrack(deck,next.vid,next.title);
+  renderQueue();
+  return true;
+}
+
 function autoLoadNext(deck,srcDeck,cb){
-  // pull the next unplayed track from the shared queue and commit it:
-  // mark it played now so no other path can grab the same track
-  var next=queue.find(function(t){return !t.played;});
+  // if this deck already has a reserved (pre-loaded) queue track, just use it
+  if(S[deck].vidId){
+    var reserved=queue.find(function(t){return t.vid===S[deck].vidId && !t.played;});
+    if(reserved){ cb(true); return; }
+  }
+  // otherwise pull the next unplayed, unreserved track and commit it
+  var next=queue.find(function(t){return !t.played && !t.reserved;});
   if(next){
-    next.played=true;
+    next.played=true; next.reserved=null;
     moveToPlayedGroup(next);
     loadTrack(deck,next.vid,next.title);
     renderQueue();
     cb(true); return;
   }
-  // otherwise fall back to recommendations
+  // fall back to recommendations
   var cache=recsCache[srcDeck];
   if(cache&&cache.length){var pick=cache[Math.floor(Math.random()*Math.min(3,cache.length))];loadTrack(deck,pick.id.videoId,decodeHtml(pick.snippet.title));cb(true);return;}
   var parsed=parseTitle(S[srcDeck].title);
