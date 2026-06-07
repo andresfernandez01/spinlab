@@ -284,7 +284,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v5.2</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v5.3</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -674,7 +674,55 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape')closeSetting
 window.onYouTubeIframeAPIReady=function(){
   if(window._spinlabPlayers) window._spinlabPlayers();
 };
-function mkPlayer(id,deck){return new YT.Player(id,{height:'180',width:'320',playerVars:{controls:0,disablekb:1,fs:0,iv_load_policy:3,modestbranding:1,playsinline:1},events:{onStateChange:function(e){onYTS(e,deck);}}});}
+function mkPlayer(id,deck){return new YT.Player(id,{height:'180',width:'320',playerVars:{controls:0,disablekb:1,fs:0,iv_load_policy:3,modestbranding:1,playsinline:1},events:{onStateChange:function(e){onYTS(e,deck);},onError:function(e){onYTErr(e,deck);}}});}
+
+// YouTube error codes: 101 & 150 = embedding disabled by the video owner;
+// 100 = video removed/private; 2 = invalid id; 5 = HTML5 player error
+function onYTErr(e,deck){
+  var code=e.data;
+  var s=S[deck];
+  if(code===101||code===150||code===100){
+    var label = code===100 ? 'Video unavailable' : 'Embedding disabled';
+    $(('status-'+deck)).textContent='⚠ '+label+' — finding another version…';
+    findPlayableAlternative(deck);
+  }
+}
+
+// search for an alternative upload of the current track that DOES allow embedding
+function findPlayableAlternative(deck){
+  var s=S[deck];
+  // build a query from clean metadata if we have it, else the title
+  var q;
+  if(s.metaArtist && s.metaTrack) q = s.metaArtist+' '+s.metaTrack;
+  else { var p=parseTitle(s.title); q = (p.artist+' '+p.track).trim() || s.title; }
+  var blockedVid = s.vidId;
+  // remember which vids we've already tried for this track so we don't loop
+  if(!s.triedVids || s.triedAltFor!==s.title){ s.triedVids={}; s.triedAltFor=s.title; }
+  s.triedVids[blockedVid]=true;
+  // search a few variations to find a playable one (topic/lyric/audio versions
+  // are usually embeddable even when the official video isn't)
+  var queries=[ q+' audio', q+' lyrics', q+' topic', q ];
+  var qi=0;
+  function tryNext(){
+    if(qi>=queries.length){ $(('status-'+deck)).textContent='⚠ No playable version found'; return; }
+    ytSearch(queries[qi++]).then(function(items){
+      var valid=(items||[]).filter(function(i){
+        return i.id&&i.id.videoId&&i.snippet&&!s.triedVids[i.id.videoId];
+      });
+      if(!valid.length){ tryNext(); return; }
+      var pick=valid[0];
+      var newVid=pick.id.videoId;
+      s.triedVids[newVid]=true;
+      $(('status-'+deck)).textContent='Trying alternative version…';
+      // load the alternative; keep the original title/meta so lyrics still match
+      var keepTitle=s.title, keepMeta={artist:s.metaArtist,track:s.metaTrack};
+      loadTrack(deck,newVid,keepTitle,keepMeta);
+      // give it a moment, then attempt to play so the user doesn't have to re-click
+      setTimeout(function(){ if(S[deck].player&&S[deck].player.playVideo) S[deck].player.playVideo(); },800);
+    }).catch(function(){ tryNext(); });
+  }
+  tryNext();
+}
 function onYTS(e,deck){
   var s=S[deck];
   if(e.data===YT.PlayerState.PLAYING){
