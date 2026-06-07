@@ -216,6 +216,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 .setlist-act{height:22px;padding:0 8px;border-radius:2px;background:linear-gradient(180deg,#353535,#252525);border:1px solid var(--border);font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;cursor:pointer;color:var(--muted)}
 .setlist-act:hover{color:var(--text)}
 .setlist-act.load{color:var(--orange);border-color:var(--orange)}
+.setlist-act.upd{color:#4caf80;border-color:#4caf80}
 .setlist-act.exp{color:#6a9fd8;border-color:#6a9fd8}
 .setlist-act.del:hover{color:#e83a1a;border-color:#e83a1a}
 .setlist-empty{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);padding:14px 0;font-style:italic}
@@ -278,7 +279,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v4.7</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v4.9</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -1219,16 +1220,20 @@ function saveSetlistsToStorage() {
   try { localStorage.setItem(SETLIST_KEY, JSON.stringify(setlists)); } catch(e){}
 }
 
-function captureSetlist(name) {
+function captureTracks() {
   var tracks = [];
-  // currently loaded tracks
   ['a','b'].forEach(function(d) {
     if(S[d].vidId) tracks.push({vid:S[d].vidId, title:S[d].title, deck:'Deck '+d.toUpperCase()});
   });
-  // queued tracks (unplayed only)
+  // capture the whole queue, including already-played history (preserve order + played state)
   queue.forEach(function(t) {
-    if(!t.played) tracks.push({vid:t.vid, title:t.title, deck:'Queue'});
+    tracks.push({vid:t.vid, title:t.title, deck:'Queue', played:!!t.played});
   });
+  return tracks;
+}
+
+function captureSetlist(name) {
+  var tracks = captureTracks();
   if(!tracks.length) { alert('No tracks loaded or queued to save!'); return; }
   var sl = {
     id: Date.now(),
@@ -1237,6 +1242,18 @@ function captureSetlist(name) {
     tracks: tracks
   };
   setlists.unshift(sl);
+  saveSetlistsToStorage();
+  renderSetlists();
+}
+
+function updateSetlist(id) {
+  var sl = setlists.find(function(s){return s.id===id;});
+  if(!sl) return;
+  var tracks = captureTracks();
+  if(!tracks.length) { alert('No tracks loaded or queued to save!'); return; }
+  if(!confirm('Overwrite "'+sl.name+'" with the current decks + queue?')) return;
+  sl.tracks = tracks;
+  sl.date = new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
   saveSetlistsToStorage();
   renderSetlists();
 }
@@ -1271,13 +1288,23 @@ function loadSetlist(sl) {
   } else if(deckB.length) {
     deckB.forEach(function(t){ resolve(t,function(vid,title){ if(vid) addToQueue(vid,title); }); });
   }
-  queued.forEach(function(t){ resolve(t,function(vid,title){ if(vid) addToQueue(vid,title); }); });
+  // restore queue tracks preserving their played state and order
+  queued.forEach(function(t){
+    resolve(t,function(vid,title){
+      if(!vid) return;
+      // avoid duplicating a track already in the queue
+      if(queue.some(function(q){return q.vid===vid && q.played===!!t.played;})) return;
+      queue.push({vid:vid, title:title, played:!!t.played});
+      renderQueue();
+    });
+  });
 }
 
 function exportSetlist(sl) {
   var lines = ['SPINLAB SETLIST — '+sl.name, 'Saved: '+sl.date, ''];
   sl.tracks.forEach(function(t, i) {
-    lines.push((i+1)+'. '+t.title+' ['+t.deck+']');
+    var played = t.played ? ' ✓' : '';
+    lines.push((i+1)+'. '+t.title+' ['+t.deck+']'+played);
   });
   var blob = new Blob([lines.join('\n')], {type:'text/plain'});
   var a = document.createElement('a');
@@ -1307,11 +1334,13 @@ function renderSetlists() {
     var acts=document.createElement('div'); acts.className='setlist-acts';
     var btnLoad=document.createElement('button'); btnLoad.className='setlist-act load'; btnLoad.textContent='▶ LOAD';
     btnLoad.addEventListener('click',function(){loadSetlist(sl);});
+    var btnUpd=document.createElement('button'); btnUpd.className='setlist-act upd'; btnUpd.textContent='⟳ UPDATE'; btnUpd.title='Overwrite with current decks + queue';
+    btnUpd.addEventListener('click',function(){updateSetlist(sl.id);});
     var btnExp=document.createElement('button'); btnExp.className='setlist-act exp'; btnExp.textContent='↓ EXPORT';
     btnExp.addEventListener('click',function(){exportSetlist(sl);});
     var btnDel=document.createElement('button'); btnDel.className='setlist-act del'; btnDel.textContent='✕';
     btnDel.addEventListener('click',function(){deleteSetlist(sl.id);});
-    acts.appendChild(btnLoad); acts.appendChild(btnExp); acts.appendChild(btnDel);
+    acts.appendChild(btnLoad); acts.appendChild(btnUpd); acts.appendChild(btnExp); acts.appendChild(btnDel);
     row.appendChild(top); row.appendChild(trks); row.appendChild(acts);
     grid.appendChild(row);
   });
@@ -1351,8 +1380,8 @@ $('setlist-file-input').addEventListener('change', function() {
       // date line: "Saved: ..."
       if(line.indexOf('Saved:')===0) { date=line.replace('Saved:','').trim(); return; }
       // track line: "1. Title [Deck A]"
-      var match = line.match(/^\d+\.\s+(.+?)\s+\[(.+?)\]$/);
-      if(match) { tracks.push({title:match[1], deck:match[2], vid:null}); }
+      var match = line.match(/^\d+\.\s+(.+?)\s+\[(.+?)\](\s*✓)?$/);
+      if(match) { tracks.push({title:match[1], deck:match[2], vid:null, played:!!match[3]}); }
     });
     if(!tracks.length) { alert('Could not read any tracks from this file.'); return; }
     setlists.unshift({id:Date.now(), name:name, date:date, tracks:tracks});
