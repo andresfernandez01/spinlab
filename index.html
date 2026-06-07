@@ -278,7 +278,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v4.3</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v4.4</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -645,8 +645,8 @@ function onYTS(e,deck){
       // also shift the queue here — that would consume an extra track
       if(s.fadedAway){ s.fadedAway=false; s.autoFadeTriggered=false; return; }
       s.autoFadeTriggered=false;
-      var endedVid = s.vidId;
-      if(endedVid) markPlayed(endedVid);
+      var endedVid = s.vidId, endedTitle = s.title;
+      if(endedVid) markPlayed(endedVid, endedTitle);
       setTimeout(function(){shiftQueue(deck);},500);
     } else {
       s.autoFadeTriggered=false;
@@ -889,10 +889,16 @@ function addToQueue(vid,title){
 }
 function removeFromQueue(idx){queue.splice(idx,1);renderQueue();}
 function clearQueue(){queue=[];renderQueue();}
-function markPlayed(vid){
+function markPlayed(vid, title){
   // mark only the first unplayed track with this vid (not all copies)
   var t = queue.find(function(t){return t.vid===vid && !t.played;});
-  if(t){ t.played=true; renderQueue(); }
+  if(t){ t.played=true; renderQueue(); return; }
+  // not in the queue — it was loaded directly to a deck.
+  // add it to the queue as played history (avoid duplicating an existing played entry)
+  if(title){
+    var already = queue.some(function(t){return t.vid===vid && t.played;});
+    if(!already){ queue.push({vid:vid, title:title, played:true}); renderQueue(); }
+  }
 }
 function shiftQueue(deck){
   // pre-load the next unplayed track onto the given deck.
@@ -1124,9 +1130,9 @@ function startFade(src,dest,btn,status,overrideDur){
       S.a.autoFadeTriggered=false;S.b.autoFadeTriggered=false;
       // mark the faded-out track so its upcoming ENDED event doesn't also shift the queue
       S[src].fadedAway=true;
-      var fadedVid=S[src].vidId;
+      var fadedVid=S[src].vidId, fadedTitle=S[src].title;
       if(S[src].player)S[src].player.pauseVideo();
-      if(fadedVid)markPlayed(fadedVid);
+      if(fadedVid)markPlayed(fadedVid, fadedTitle);
       setTimeout(function(){shiftQueue(src);},800);
     }
   },1000/20);
