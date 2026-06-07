@@ -222,6 +222,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 .setlist-act:hover{color:var(--text)}
 .setlist-act.load{color:var(--orange);border-color:var(--orange)}
 .setlist-act.upd{color:#4caf80;border-color:#4caf80}
+.setlist-act.confirming{color:#181818;background:#4caf80;border-color:#4caf80}
 .setlist-act.exp{color:#6a9fd8;border-color:#6a9fd8}
 .setlist-act.del:hover{color:#e83a1a;border-color:#e83a1a}
 .setlist-empty{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);padding:14px 0;font-style:italic}
@@ -284,7 +285,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v5.3</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v5.5</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -1339,12 +1340,34 @@ function captureSetlist(name) {
   renderSetlists();
 }
 
-function updateSetlist(id) {
+function updateSetlist(id, btn) {
   var sl = setlists.find(function(s){return s.id===id;});
   if(!sl) return;
   var tracks = captureTracks();
-  if(!tracks.length) { alert('No tracks loaded or queued to save!'); return; }
-  if(!confirm('Overwrite "'+sl.name+'" with the current decks + queue?')) return;
+  if(!tracks.length){
+    if(btn){ var o=btn.textContent; btn.textContent='NOTHING TO SAVE'; setTimeout(function(){btn.textContent=o;},1400); }
+    return;
+  }
+  // two-step inline confirm on the button itself — no blocking popup
+  if(btn && btn.dataset.confirming!=='1'){
+    btn.dataset.confirming='1';
+    var orig=btn.textContent;
+    btn.dataset.orig=orig;
+    btn.textContent='CONFIRM?';
+    btn.classList.add('confirming');
+    btn._confirmTimer=setTimeout(function(){
+      btn.dataset.confirming='0';
+      btn.textContent=btn.dataset.orig||'⟳ UPDATE';
+      btn.classList.remove('confirming');
+    },2500);
+    return;
+  }
+  // confirmed
+  if(btn){
+    clearTimeout(btn._confirmTimer);
+    btn.dataset.confirming='0';
+    btn.classList.remove('confirming');
+  }
   sl.tracks = tracks;
   sl.date = new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
   saveSetlistsToStorage();
@@ -1381,13 +1404,12 @@ function loadSetlist(sl) {
   } else if(deckB.length) {
     deckB.forEach(function(t){ resolve(t,function(vid,title){ if(vid) addToQueue(vid,title); }); });
   }
-  // restore queue tracks preserving their played state and order
+  // restore queue tracks as fresh/unplayed so the set can be played through again
   queued.forEach(function(t){
     resolve(t,function(vid,title){
       if(!vid) return;
-      // avoid duplicating a track already in the queue
-      if(queue.some(function(q){return q.vid===vid && q.played===!!t.played;})) return;
-      queue.push({vid:vid, title:title, played:!!t.played});
+      if(queue.some(function(q){return q.vid===vid && !q.played;})) return;
+      queue.push({vid:vid, title:title, played:false});
       renderQueue();
     });
   });
@@ -1428,7 +1450,7 @@ function renderSetlists() {
     var btnLoad=document.createElement('button'); btnLoad.className='setlist-act load'; btnLoad.textContent='▶ LOAD';
     btnLoad.addEventListener('click',function(){loadSetlist(sl);});
     var btnUpd=document.createElement('button'); btnUpd.className='setlist-act upd'; btnUpd.textContent='⟳ UPDATE'; btnUpd.title='Overwrite with current decks + queue';
-    btnUpd.addEventListener('click',function(){updateSetlist(sl.id);});
+    btnUpd.addEventListener('click',function(){updateSetlist(sl.id, btnUpd);});
     var btnExp=document.createElement('button'); btnExp.className='setlist-act exp'; btnExp.textContent='↓ EXPORT';
     btnExp.addEventListener('click',function(){exportSetlist(sl);});
     var btnDel=document.createElement('button'); btnDel.className='setlist-act del'; btnDel.textContent='✕';
