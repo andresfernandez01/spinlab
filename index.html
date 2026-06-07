@@ -190,6 +190,11 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 .fade-btn.fading{background:linear-gradient(180deg,#1a3a28,#0a2018);border-color:#4caf80;color:#4caf80}
 .fade-status{text-align:center;font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);min-height:12px}
 .bottom-panel{max-width:1280px;margin:0 auto}
+.panel-grip{cursor:grab;color:var(--border2);font-size:13px;user-select:none;transition:color .15s}
+.panel-grip:hover{color:var(--orange)}
+.panel-grip:active{cursor:grabbing}
+.bottom-panel.dragging{opacity:0.4}
+.bottom-panel.drop-target>.panel-box{box-shadow:0 -3px 0 var(--orange)}
 .panel-box{background:var(--panel);border-top:1px solid var(--border);padding:12px 20px}
 .panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .panel-title{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:4px;color:var(--orange)}
@@ -279,7 +284,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v5.1</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v5.2</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -384,10 +389,13 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
   </div>
 </div>
 
+<div id="panels-container">
+
 <!-- LYRICS -->
-<div class="bottom-panel"><div class="panel-box" id="lyrics-panel" style="display:none">
+<div class="bottom-panel" data-panel="lyrics"><div class="panel-box" id="lyrics-panel" style="display:none">
   <div class="panel-head">
     <div style="display:flex;align-items:center;gap:10px;min-width:0">
+      <span class="panel-grip" title="Drag to reorder">⠿</span>
       <span class="panel-title">♪ LYRICS</span>
       <span class="panel-sub" id="lyrics-track" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></span>
       <span class="recs-badge" id="lyrics-deck-tag" style="display:inline-block;color:var(--orange);border-color:var(--orange)"></span>
@@ -401,9 +409,9 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 </div></div>
 
 <!-- QUEUE -->
-<div class="bottom-panel"><div class="panel-box" id="queue-panel" style="display:none">
+<div class="bottom-panel" data-panel="queue"><div class="panel-box" id="queue-panel" style="display:none">
   <div class="panel-head">
-    <span class="panel-title">≡ QUEUE</span>
+    <div style="display:flex;align-items:center;gap:10px"><span class="panel-grip" title="Drag to reorder">⠿</span><span class="panel-title">≡ QUEUE</span></div>
     <div style="display:flex;gap:10px;align-items:center">
       <span class="panel-sub" id="queue-count">0 tracks</span>
       <button class="queue-clear" id="queue-clear">CLEAR</button>
@@ -413,16 +421,16 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 </div></div>
 
 <!-- CRATES -->
-<div class="bottom-panel"><div class="panel-box">
-  <div class="panel-head"><span class="panel-title">★ CRATES</span><span class="panel-sub" id="crates-count">0 tracks</span></div>
+<div class="bottom-panel" data-panel="crates"><div class="panel-box">
+  <div class="panel-head"><div style="display:flex;align-items:center;gap:10px"><span class="panel-grip" title="Drag to reorder">⠿</span><span class="panel-title">★ CRATES</span></div><span class="panel-sub" id="crates-count">0 tracks</span></div>
   <div class="crates-grid" id="crates-grid"></div>
 </div></div>
 
 <!-- UP NEXT -->
-<div class="bottom-panel" id="recs-panel" style="display:none"><div class="panel-box">
+<div class="bottom-panel" data-panel="recs" id="recs-panel" style="display:none"><div class="panel-box">
   <div class="recs-head">
     <div class="recs-title-col">
-      <div class="recs-title-row"><span class="panel-title">↻ UP NEXT</span><span class="recs-badge" id="recs-badge"></span></div>
+      <div class="recs-title-row"><span class="panel-grip" title="Drag to reorder">⠿</span><span class="panel-title">↻ UP NEXT</span><span class="recs-badge" id="recs-badge"></span></div>
       <span class="panel-sub" id="recs-source"></span>
     </div>
     <div class="recs-deck-btns"><button class="recs-deck-btn on" id="recs-btn-a">DECK A</button><button class="recs-deck-btn" id="recs-btn-b">DECK B</button></div>
@@ -431,9 +439,9 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 </div></div>
 
 <!-- SETLISTS -->
-<div class="bottom-panel"><div class="panel-box" id="setlist-panel">
+<div class="bottom-panel" data-panel="setlists"><div class="panel-box" id="setlist-panel">
   <div class="panel-head">
-    <span class="panel-title">◉ SETLISTS</span>
+    <div style="display:flex;align-items:center;gap:10px"><span class="panel-grip" title="Drag to reorder">⠿</span><span class="panel-title">◉ SETLISTS</span></div>
     <div style="display:flex;gap:8px;align-items:center">
       <span class="panel-sub" id="setlist-count">0 saved</span>
       <button class="srch-btn" id="btn-import-setlist" style="height:26px;font-size:9px">↑ IMPORT</button>
@@ -448,6 +456,9 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
   </div>
   <div id="setlist-grid" class="crates-grid" style="max-height:200px"></div>
 </div></div>
+
+</div>
+<!-- /panels-container -->
 
 <script>
 (function() {
@@ -1632,6 +1643,67 @@ function mainLoop(){
   requestAnimationFrame(mainLoop);
 }
 
+// ── PANEL REORDERING ─────────────────────────────────────────
+var PANEL_ORDER_KEY = 'spinlab-panel-order';
+var panelDragEl = null;
+
+function initPanelReorder(){
+  var container = $('panels-container');
+  if(!container) return;
+  // restore saved order
+  try{
+    var order = JSON.parse(localStorage.getItem(PANEL_ORDER_KEY)||'null');
+    if(order && order.length){
+      order.forEach(function(name){
+        var el = container.querySelector('.bottom-panel[data-panel="'+name+'"]');
+        if(el) container.appendChild(el);
+      });
+    }
+  }catch(e){}
+
+  var panels = container.querySelectorAll('.bottom-panel');
+  panels.forEach(function(panel){
+    var grip = panel.querySelector('.panel-grip');
+    if(!grip) return;
+    // only allow drag when started from the grip
+    grip.addEventListener('mousedown',function(){ panel.draggable=true; });
+    grip.addEventListener('mouseup',function(){ panel.draggable=false; });
+    panel.addEventListener('dragstart',function(e){
+      panelDragEl=panel; panel.classList.add('dragging');
+      e.dataTransfer.effectAllowed='move';
+      try{e.dataTransfer.setData('text/plain',panel.getAttribute('data-panel'));}catch(err){}
+    });
+    panel.addEventListener('dragend',function(){
+      panel.classList.remove('dragging'); panel.draggable=false;
+      container.querySelectorAll('.bottom-panel').forEach(function(p){p.classList.remove('drop-target');});
+      savePanelOrder();
+    });
+    panel.addEventListener('dragover',function(e){
+      e.preventDefault(); e.dataTransfer.dropEffect='move';
+      if(!panelDragEl||panelDragEl===panel) return;
+      panel.classList.add('drop-target');
+    });
+    panel.addEventListener('dragleave',function(){ panel.classList.remove('drop-target'); });
+    panel.addEventListener('drop',function(e){
+      e.preventDefault(); panel.classList.remove('drop-target');
+      if(!panelDragEl||panelDragEl===panel) return;
+      // insert dragged panel before or after this one depending on direction
+      var rect=panel.getBoundingClientRect();
+      var after = e.clientY > rect.top + rect.height/2;
+      if(after) panel.parentNode.insertBefore(panelDragEl, panel.nextSibling);
+      else panel.parentNode.insertBefore(panelDragEl, panel);
+      savePanelOrder();
+    });
+  });
+}
+
+function savePanelOrder(){
+  var container=$('panels-container'); if(!container) return;
+  var order=[];
+  container.querySelectorAll('.bottom-panel').forEach(function(p){ order.push(p.getAttribute('data-panel')); });
+  try{ localStorage.setItem(PANEL_ORDER_KEY, JSON.stringify(order)); }catch(e){}
+}
+
 // ── BOOT ─────────────────────────────────────────────────────
 function boot(){
   buildVU();initKnobs();initArt('a');initArt('b');
@@ -1640,7 +1712,7 @@ function boot(){
   // sync controls to their default values explicitly so a refresh is consistent
   $('xfader').value=0; updateXF(0);
   $('master-vol').value=50; masterVol=0.5; $('master-val').textContent='50';
-  applyVols();loadFavs();loadSetlists();loadEQ();renderQueue();checkBanner();mainLoop();
+  applyVols();loadFavs();loadSetlists();loadEQ();renderQueue();initPanelReorder();checkBanner();mainLoop();
   if(!YT_KEY&&!API_URL)setTimeout(openSettings,600);
   if(API_URL){fetch(API_URL+'/health').catch(function(){});}
 }
