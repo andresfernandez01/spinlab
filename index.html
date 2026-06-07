@@ -279,7 +279,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v4.9</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v5.1</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -312,6 +312,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
           <option value="hiphop">Hip-Hop</option>
           <option value="electronic">Electronic</option>
           <option value="classical">Classical</option>
+          <option value="custom">Custom</option>
         </select>
       </div>
       <div class="eq-bands" id="eq-bands-a"></div>
@@ -327,8 +328,8 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
     <div class="vu-wrap" id="vu-wrap"></div>
     <div class="xf-section">
       <div class="xf-labels"><span>A</span><span>B</span></div>
-      <input type="range" class="xfader" id="xfader" min="0" max="100" value="50">
-      <div class="xf-pcts"><span id="xf-a">50%</span><span id="xf-b">50%</span></div>
+      <input type="range" class="xfader" id="xfader" min="0" max="100" value="0">
+      <div class="xf-pcts"><span id="xf-a">100%</span><span id="xf-b">0%</span></div>
     </div>
     <div class="sync-section">
       <div class="mx-label">SYNC</div>
@@ -338,8 +339,8 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
     </div>
     <div class="master-section">
       <div class="mx-label">MASTER</div>
-      <input type="range" class="master" id="master-vol" min="0" max="100" value="80">
-      <div class="master-val" id="master-val">80</div>
+      <input type="range" class="master" id="master-vol" min="0" max="100" value="50">
+      <div class="master-val" id="master-val">50</div>
     </div>
     <div class="autofade-section">
       <div class="mx-label">AUTO FADE</div>
@@ -372,6 +373,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
           <option value="hiphop">Hip-Hop</option>
           <option value="electronic">Electronic</option>
           <option value="classical">Classical</option>
+          <option value="custom">Custom</option>
         </select>
       </div>
       <div class="eq-bands" id="eq-bands-b"></div>
@@ -485,6 +487,30 @@ var eqVals = {
   a: [0,0,0,0,0,0,0,0,0,0],
   b: [0,0,0,0,0,0,0,0,0,0]
 };
+var eqPreset = { a:'flat', b:'flat' };
+var EQ_KEY = 'spinlab-eq-state';
+
+function saveEQ(){
+  try{ localStorage.setItem(EQ_KEY, JSON.stringify({vals:eqVals, preset:eqPreset})); }catch(e){}
+}
+function loadEQ(){
+  var data=null;
+  try{ data=JSON.parse(localStorage.getItem(EQ_KEY)||'null'); }catch(e){}
+  if(!data||!data.vals) return;
+  ['a','b'].forEach(function(d){
+    if(!data.vals[d]) return;
+    eqVals[d]=data.vals[d].slice();
+    if(data.preset&&data.preset[d]){ eqPreset[d]=data.preset[d]; var sel=$(('eq-preset-'+d)); if(sel)sel.value=eqPreset[d]; }
+    // push values onto the sliders + glow
+    eqVals[d].forEach(function(v,i){
+      var sl=$(('eq-'+d+'-'+i)), vl=$(('eqv-'+d+'-'+i)), gr=$(('eqg-'+d+'-'+i));
+      if(sl) sl.value=v;
+      if(vl){ vl.textContent=(v>=0?'+':'')+v; vl.style.color=v>0?'var(--orange)':v<0?'#6a9fd8':'var(--muted)'; }
+      setGrooveGlow(gr, v);
+    });
+    broadcastEQ(d);
+  });
+}
 
 function buildEQ(deck) {
   var wrap = $(('eq-bands-'+deck)); if(!wrap) return;
@@ -507,7 +533,10 @@ function buildEQ(deck) {
         vl.textContent = (v>=0?'+':'')+v.toFixed(0);
         vl.style.color = v>0?'var(--orange)':v<0?'#6a9fd8':'var(--muted)';
         setGrooveGlow(gr, v);
+        // a manual tweak means it's no longer a named preset
+        eqPreset[d]='custom'; var sel=$(('eq-preset-'+d)); if(sel) sel.value='custom';
         broadcastEQ(d);
+        saveEQ();
       });
     })(deck, i, slider, val, groove);
     sliderWrap.appendChild(groove);
@@ -530,7 +559,11 @@ function setGrooveGlow(groove, v) {
 }
 
 function applyPreset(deck, name) {
+  // selecting "Custom" in the dropdown shouldn't change the sliders —
+  // it just reflects a manually-adjusted state
+  if(name==='custom'){ eqPreset[deck]='custom'; saveEQ(); return; }
   var preset = EQ_PRESETS[name] || EQ_PRESETS.flat;
+  eqPreset[deck] = name;
   preset.forEach(function(v, i) {
     eqVals[deck][i] = v;
     var sl = $(('eq-'+deck+'-'+i));
@@ -544,6 +577,7 @@ function applyPreset(deck, name) {
     setGrooveGlow(gr, v);
   });
   broadcastEQ(deck);
+  saveEQ();
 }
 
 // Send EQ values to the companion extension (if installed).
@@ -565,7 +599,7 @@ window.addEventListener('message', function(e){
 });
 
 function initKnobs(){ buildEQ('a'); buildEQ('b'); }
-var masterVol    = 0.8;
+var masterVol    = 0.5;
 var favs         = [];
 var queue        = [];
 var queueDrag    = null;
@@ -1599,7 +1633,17 @@ function mainLoop(){
 }
 
 // ── BOOT ─────────────────────────────────────────────────────
-function boot(){buildVU();initKnobs();initArt('a');initArt('b');updateXF(50);applyVols();loadFavs();loadSetlists();renderQueue();checkBanner();mainLoop();if(!YT_KEY&&!API_URL)setTimeout(openSettings,600);if(API_URL){fetch(API_URL+'/health').catch(function(){});}}
+function boot(){
+  buildVU();initKnobs();initArt('a');initArt('b');
+  // clear search inputs on refresh
+  $('search-a').value=''; $('search-b').value='';
+  // sync controls to their default values explicitly so a refresh is consistent
+  $('xfader').value=0; updateXF(0);
+  $('master-vol').value=50; masterVol=0.5; $('master-val').textContent='50';
+  applyVols();loadFavs();loadSetlists();loadEQ();renderQueue();checkBanner();mainLoop();
+  if(!YT_KEY&&!API_URL)setTimeout(openSettings,600);
+  if(API_URL){fetch(API_URL+'/health').catch(function(){});}
+}
 // expose player init globally so onYouTubeIframeAPIReady can reach it
 window._spinlabPlayers = function(){S.a.player=mkPlayer('yt-a','a');S.b.player=mkPlayer('yt-b','b');};
 window.applyPreset = function(deck,name){ applyPreset(deck,name); };
