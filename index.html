@@ -285,7 +285,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v5.6</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag" style="color:var(--orange)">v5.7</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -1221,13 +1221,28 @@ $('auto-playlist-btn').addEventListener('click',function(){
   if(autoPlaylistEnabled){ maybeAutoReplenish(); }
 });
 
-// when enabled (and auto-fade is on), keep at least 1 unplayed track in the queue
-// by adding a recommendation based on the last-queued track
+// when enabled (and auto-fade is on), keep at least 1 genuinely-pending track
+// in the queue, and load a track onto an empty deck so a single track self-sustains
 function maybeAutoReplenish(){
   if(!autoPlaylistEnabled || !autoFadeEnabled) return;
   if(autoPlaylistBusy) return;
-  var unplayed = queue.filter(function(t){return !t.played;}).length;
-  if(unplayed >= 1) return; // still have something queued
+
+  // if a deck is empty but the other has a track, pull the next queued track onto it
+  var aEmpty = !S.a.vidId, bEmpty = !S.b.vidId;
+  if((aEmpty || bEmpty) && (S.a.vidId || S.b.vidId)){
+    var emptyDeck = aEmpty ? 'a' : 'b';
+    var pending = queue.find(function(t){return !t.played && !t.reserved;});
+    if(pending){
+      preloadNext(emptyDeck); // reserves + loads it
+      return;
+    }
+  }
+
+  // count tracks that are genuinely still waiting (not played, not already
+  // reserved/cued onto a deck)
+  var pendingCount = queue.filter(function(t){return !t.played && !t.reserved;}).length;
+  if(pendingCount >= 1) return;
+
   // seed videoId: last queued track, else whatever is playing
   var seedVid = lastQueuedVid;
   var seedTitle = lastQueuedTitle;
@@ -1783,7 +1798,10 @@ function mainLoop(){
   });
   updateVU();
   if(lyricsState.open){ updateLyricsTarget(false); if(!lyricsState.minimized) updateLyricsScroll(); }
-  if(autoPlaylistEnabled && autoFadeEnabled) maybeAutoReplenish();
+  if(autoPlaylistEnabled && autoFadeEnabled){
+    var now=Date.now();
+    if(!window._apLast || now-window._apLast>500){ window._apLast=now; maybeAutoReplenish(); }
+  }
   requestAnimationFrame(mainLoop);
 }
 
