@@ -91,9 +91,12 @@ body{background:#0e0e0e;background-image:radial-gradient(circle at 50% 0%, #1e1e
 .album-art{width:110px;height:110px;border-radius:50%;background:#222;overflow:hidden;border:2px solid #111;position:relative;display:flex;align-items:center;justify-content:center}
 .album-art canvas{width:110px;height:110px;border-radius:50%}
 .album-label{position:absolute;width:22px;height:22px;border-radius:50%;background:var(--panel);border:2px solid #111;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2}
-.track-info{background:var(--groove);border:1px solid var(--border);border-radius:4px;padding:8px 10px;display:flex;align-items:center;gap:10px}
+.track-info{background:#10130f;border:1px solid var(--border);border-radius:4px;padding:8px 10px;display:flex;align-items:center;gap:10px;position:relative;overflow:hidden;box-shadow:inset 0 1px 4px rgba(0,0,0,0.6)}
+.track-info::before{content:'';position:absolute;inset:0;pointer-events:none;background-image:repeating-linear-gradient(0deg,rgba(0,0,0,0.25) 0px,rgba(0,0,0,0.25) 1px,transparent 1px,transparent 3px),repeating-linear-gradient(90deg,rgba(0,0,0,0.18) 0px,rgba(0,0,0,0.18) 1px,transparent 1px,transparent 3px);opacity:0.55;z-index:0}
+.track-info::after{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 0%,rgba(120,200,120,0.06),transparent 70%);z-index:0}
+.track-info>*{position:relative;z-index:1}
 .track-text{flex:1;min-width:0}
-.track-name{font-size:11px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+.track-name{font-size:11px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#e4e0d6;text-shadow:0 0 4px rgba(180,220,180,0.15)}
 .track-sub{font-size:9px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace}
 .fav-np{background:none;border:none;cursor:pointer;font-size:16px;color:var(--muted);padding:0;flex-shrink:0}
 .fav-np:hover,.fav-np.on{color:var(--orange)}
@@ -109,7 +112,7 @@ input[type=range]{-webkit-appearance:none;appearance:none;width:100%;outline:non
 input[type=range].prog{height:3px;background:var(--groove);border-radius:2px;border:1px solid var(--border)}
 input[type=range].prog::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;border-radius:50%;background:var(--orange)}
 .time-row{display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:9px;color:var(--muted)}
-.eq-section{display:flex;flex-direction:column;gap:5px;background:var(--groove);border:1px solid var(--border);border-radius:4px;padding:8px 10px}
+.eq-section{display:flex;flex-direction:column;gap:5px;background:#202020;border:1px solid var(--border);border-radius:4px;padding:8px 10px}
 .eq-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px}
 .eq-label{font-family:'Barlow Condensed',sans-serif;font-size:9px;letter-spacing:3px;color:var(--orange);font-weight:700}
 .eq-preset-select{background:var(--surface3);border:1px solid var(--border2);border-radius:3px;padding:2px 6px;color:var(--text);font-family:'Barlow Condensed',sans-serif;font-size:9px;letter-spacing:1px;cursor:pointer;outline:none}
@@ -287,7 +290,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag" style="color:var(--orange)">v6.0</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag" style="color:var(--orange)">v6.2</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
