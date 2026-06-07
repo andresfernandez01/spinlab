@@ -278,7 +278,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v4.2</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag">XR-2 PRO</div><div class="model-tag" style="color:var(--border2)">v4.3</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -639,11 +639,17 @@ function onYTS(e,deck){
   } else {
     s.playing=false;
     $(('play-'+deck)).textContent='▶'; $(('play-'+deck)).classList.remove('on');
-    $(('led-'+deck)).classList.remove('on'); s.autoFadeTriggered=false;
+    $(('led-'+deck)).classList.remove('on');
     if(e.data===YT.PlayerState.ENDED){
+      // if an auto-fade already handled the transition off this deck, don't
+      // also shift the queue here — that would consume an extra track
+      if(s.fadedAway){ s.fadedAway=false; s.autoFadeTriggered=false; return; }
+      s.autoFadeTriggered=false;
       var endedVid = s.vidId;
       if(endedVid) markPlayed(endedVid);
       setTimeout(function(){shiftQueue(deck);},500);
+    } else {
+      s.autoFadeTriggered=false;
     }
   }
 }
@@ -889,10 +895,10 @@ function markPlayed(vid){
   if(t){ t.played=true; renderQueue(); }
 }
 function shiftQueue(deck){
-  // load the next unplayed track onto the given deck, mark it consumed
+  // pre-load the next unplayed track onto the given deck.
+  // does NOT mark it played — that happens when it actually ends/fades.
   var next=queue.find(function(t){return !t.played;});
   if(!next)return false;
-  next.played=true;
   loadTrack(deck,next.vid,next.title);
   renderQueue();
   return true;
@@ -924,8 +930,8 @@ function renderQueue(){
     var loadB=document.createElement('button');loadB.className='q-btn';loadB.textContent='\u2192 B';loadB.style.color='var(--orange)';loadB.style.borderColor='var(--orange)';
     var rm=document.createElement('button');rm.className='queue-rm';rm.textContent='\u2715';
     (function(t,idx){
-      loadA.addEventListener('click',function(e){e.stopPropagation();t.played=true;loadTrack('a',t.vid,t.title);renderQueue();});
-      loadB.addEventListener('click',function(e){e.stopPropagation();t.played=true;loadTrack('b',t.vid,t.title);renderQueue();});
+      loadA.addEventListener('click',function(e){e.stopPropagation();loadTrack('a',t.vid,t.title);renderQueue();});
+      loadB.addEventListener('click',function(e){e.stopPropagation();loadTrack('b',t.vid,t.title);renderQueue();});
       rm.addEventListener('click',function(e){e.stopPropagation();removeFromQueue(idx);});
       item.addEventListener('dragstart',function(e){queueDrag=idx;e.dataTransfer.effectAllowed='move';item.style.opacity='0.4';});
       item.addEventListener('dragend',function(){item.style.opacity='';document.querySelectorAll('.queue-item').forEach(function(el){el.classList.remove('drag-over');});});
@@ -1116,16 +1122,20 @@ function startFade(src,dest,btn,status,overrideDur){
       clearInterval(fadeInterval);fadeInterval=null;btn.classList.remove('fading');btn.textContent='⇄ FADE NOW';
       status.textContent='✓ FADED TO DECK '+dest.toUpperCase();
       S.a.autoFadeTriggered=false;S.b.autoFadeTriggered=false;
+      // mark the faded-out track so its upcoming ENDED event doesn't also shift the queue
+      S[src].fadedAway=true;
+      var fadedVid=S[src].vidId;
       if(S[src].player)S[src].player.pauseVideo();
+      if(fadedVid)markPlayed(fadedVid);
       setTimeout(function(){shiftQueue(src);},800);
     }
   },1000/20);
 }
 
 function autoLoadNext(deck,srcDeck,cb){
-  // first try the shared queue
+  // first try the shared queue (pre-load, don't mark played yet)
   var next=queue.find(function(t){return !t.played;});
-  if(next){ next.played=true; loadTrack(deck,next.vid,next.title); renderQueue(); cb(true); return; }
+  if(next){ loadTrack(deck,next.vid,next.title); renderQueue(); cb(true); return; }
   // otherwise fall back to recommendations
   var cache=recsCache[srcDeck];
   if(cache&&cache.length){var pick=cache[Math.floor(Math.random()*Math.min(3,cache.length))];loadTrack(deck,pick.id.videoId,decodeHtml(pick.snippet.title));cb(true);return;}
