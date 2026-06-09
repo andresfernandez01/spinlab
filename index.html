@@ -187,7 +187,15 @@ input[type=range].xfader::-webkit-slider-thumb{-webkit-appearance:none;width:16p
 .info-detail{display:flex;align-items:center;gap:5px;font-size:8px;color:#a89e90}
 .info-k{color:#6a6055;font-size:7px;letter-spacing:1px}
 .info-divider{height:1px;background:rgba(232,140,60,0.12);margin:2px 0}
-.info-status{font-family:'DM Mono',monospace;font-size:9px;color:#e6ded2;text-shadow:0 0 4px rgba(232,140,60,0.2);min-height:24px;line-height:1.3;padding-top:2px;letter-spacing:0.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.info-status{font-family:'DM Mono',monospace;font-size:9px;color:var(--orange);text-shadow:0 0 5px rgba(232,140,60,0.35);min-height:24px;line-height:1.3;padding-top:2px;letter-spacing:0.5px;overflow:hidden;position:relative}
+.info-status-track{display:inline-block;white-space:nowrap;padding-left:0}
+.info-status-track.scrolling{animation:lcd-marquee 12s linear infinite}
+@keyframes lcd-marquee{
+  0%{transform:translateX(0)}
+  10%{transform:translateX(0)}
+  90%{transform:translateX(calc(-100% + var(--scroll-width,0px)))}
+  100%{transform:translateX(calc(-100% + var(--scroll-width,0px)))}
+}
 .sync-section{width:100%;display:flex;flex-direction:column;gap:5px}
 .sync-btn{width:100%;height:32px;border-radius:6px;background:linear-gradient(180deg,#3a3a3a 0%,#2a2a2a 60%,#242424 100%);border:1px solid var(--border);border-top:1px solid var(--ridge);box-shadow:0 2px 3px rgba(0,0,0,0.5),inset 0 1px 0 rgba(255,255,255,0.08);font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;color:var(--orange);cursor:pointer;transition:transform .05s}
 .sync-btn:active{transform:translateY(2px);box-shadow:0 0 1px rgba(0,0,0,0.5),inset 0 1px 2px rgba(0,0,0,0.4)}
@@ -244,7 +252,10 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 .setlist-act.del:hover{color:#e83a1a;border-color:#e83a1a}
 .setlist-empty{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);padding:14px 0;font-style:italic}
 .recs-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-.recs-title-col{display:flex;flex-direction:column;gap:4px}
+.recs-title-col{display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+.mini-lcd{display:inline-block;background:#161210;border:1px solid var(--border);border-radius:4px;padding:3px 8px;font-family:'DM Mono',monospace;font-size:9px;color:var(--orange);text-shadow:0 0 4px rgba(232,140,60,0.25);position:relative;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,0.5);max-width:280px;white-space:nowrap;text-overflow:ellipsis}
+.mini-lcd:empty{display:none}
+.mini-lcd::before{content:'';position:absolute;inset:0;pointer-events:none;background-image:repeating-linear-gradient(0deg,rgba(0,0,0,0.25) 0px,rgba(0,0,0,0.25) 1px,transparent 1px,transparent 3px),repeating-linear-gradient(90deg,rgba(0,0,0,0.18) 0px,rgba(0,0,0,0.18) 1px,transparent 1px,transparent 3px);opacity:0.5;border-radius:4px}
 .recs-title-row{display:flex;align-items:center;gap:8px}
 .recs-badge{font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;padding:2px 7px;border-radius:3px;border:1px solid;display:none}
 .recs-badge.lastfm{color:#d51007;border-color:#d51007;background:rgba(213,16,7,0.1)}
@@ -302,7 +313,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag" style="color:var(--orange)">v6.6</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag" style="color:var(--orange)">v6.7</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -370,7 +381,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
       <div class="info-divider"></div>
       <div class="info-row info-row-detail"><span class="info-detail"><span class="info-k">MASTER</span><span id="master-val">50</span></span><span class="info-detail"><span class="info-k">FADE</span><span id="fade-time-val">15s</span></span></div>
       <div class="info-divider"></div>
-      <div class="info-status" id="info-status">Ready</div>
+      <div class="info-status" id="info-status"><span class="info-status-track" id="info-status-track">Ready</span></div>
     </div>
   </div>
 
@@ -439,7 +450,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
   <div class="recs-head">
     <div class="recs-title-col">
       <div class="recs-title-row"><span class="panel-grip" title="Drag to reorder">⠿</span><span class="panel-title">↻ UP NEXT</span><span class="recs-badge" id="recs-badge"></span></div>
-      <span class="panel-sub" id="recs-source"></span>
+      <span class="mini-lcd" id="recs-source"></span>
     </div>
     <div class="recs-deck-btns"><button class="recs-deck-btn on" id="recs-btn-a">DECK A</button><button class="recs-deck-btn" id="recs-btn-b">DECK B</button></div>
   </div>
@@ -653,6 +664,26 @@ var lastQueuedTitle = null;
 var autoPlaylistBusy = false;
 
 function $(id) { return document.getElementById(id); }
+
+// Update the info-screen status line. Adds a marquee animation when the
+// text is too wide to fit in the LCD area.
+function setStatus(msg){
+  var track = $('info-status-track');
+  var container = $('info-status');
+  if(!track || !container) return;
+  track.textContent = msg || '';
+  track.classList.remove('scrolling');
+  track.style.removeProperty('--scroll-width');
+  // measure after the text has painted
+  requestAnimationFrame(function(){
+    if(!track.parentNode) return;
+    var overflow = track.scrollWidth - container.clientWidth;
+    if(overflow > 4){
+      track.style.setProperty('--scroll-width', container.clientWidth + 'px');
+      track.classList.add('scrolling');
+    }
+  });
+}
 function decodeHtml(str) { var t=document.createElement('textarea'); t.innerHTML=str; return t.value; }
 function fmt(sec) { var m=Math.floor(sec/60),s=Math.floor(sec%60); return m+':'+(s<10?'0':'')+s; }
 function randColors() { var p=[['#c9395a','#e8881a'],['#1a3a6a','#1a7a9a'],['#2a6a3a','#8aaa1a'],['#6a2a1a','#aa4a0a'],['#4a1a5a','#8a1a7a'],['#1a4a5a','#0a8a7a']]; return p[Math.floor(Math.random()*p.length)]; }
@@ -866,8 +897,8 @@ $('tempo-b').addEventListener('input',function(){setTempo('b',this.value);});
 function setTempo(deck,val){var s=S[deck];s.tempoAdj=parseFloat(val);$(('tv-'+deck)).textContent=(val>=0?'+':'')+parseFloat(val).toFixed(1)+'%';if(s.player&&s.player.setPlaybackRate)s.player.setPlaybackRate(Math.max(0.5,Math.min(2,1+val/100)));if(s.bpm)$(('bpm-'+deck)).textContent=(s.bpm*(1+val/100)).toFixed(1)+' BPM';}
 $('sync-ab').addEventListener('click',function(){syncDecks('a');});
 $('sync-ba').addEventListener('click',function(){syncDecks('b');});
-function syncDecks(target){var src=target==='a'?'b':'a';if(!S[src].bpm||!S[target].bpm){return;}var c=Math.max(-8,Math.min(8,((S[src].bpm-S[target].bpm)/S[target].bpm)*100));$(('tempo-'+target)).value=c;setTempo(target,c);$('info-status').textContent='✓ '+S[src].bpm.toFixed(1)+' BPM';}
-function updateSyncStatus(){var a=S.a.bpm,b=S.b.bpm;if(a&&b)$('info-status').textContent='A:'+a.toFixed(0)+' B:'+b.toFixed(0);}
+function syncDecks(target){var src=target==='a'?'b':'a';if(!S[src].bpm||!S[target].bpm){return;}var c=Math.max(-8,Math.min(8,((S[src].bpm-S[target].bpm)/S[target].bpm)*100));$(('tempo-'+target)).value=c;setTempo(target,c);setStatus('✓ '+S[src].bpm.toFixed(1)+' BPM');}
+function updateSyncStatus(){var a=S.a.bpm,b=S.b.bpm;if(a&&b)setStatus('A:'+a.toFixed(0)+' B:'+b.toFixed(0));}
 
 // ── MIXER ────────────────────────────────────────────────────
 $('xfader').addEventListener('input',function(){updateXF(this.value);});
@@ -1234,8 +1265,8 @@ $('auto-fade-btn').addEventListener('click',function(){
   this.style.color=autoFadeEnabled?'var(--green)':'var(--muted)';
   this.style.borderColor=autoFadeEnabled?'var(--green)':'var(--border)';
   this.style.background=autoFadeEnabled?'linear-gradient(180deg,#1a3a28,#0a2018)':'linear-gradient(180deg,#363636,#272727)';
-  if(autoFadeEnabled){S.a.autoFadeTriggered=false;S.b.autoFadeTriggered=false;$('info-status').textContent='Watching for end of track...';}
-  else $('info-status').textContent='Ready';
+  if(autoFadeEnabled){S.a.autoFadeTriggered=false;S.b.autoFadeTriggered=false;setStatus('Watching for end of track...');}
+  else setStatus('Ready');
 });
 $('auto-playlist-btn').addEventListener('click',function(){
   autoPlaylistEnabled=!autoPlaylistEnabled;
@@ -1277,14 +1308,14 @@ function maybeAutoReplenish(){
   }
   if(!seedVid) return;
   autoPlaylistBusy = true;
-  $('info-status').textContent='Auto-playlist: finding a track…';
+  setStatus('Auto-playlist: finding a track…');
   recommendForSeed(seedVid, seedTitle, function(rec){
     autoPlaylistBusy = false;
     if(rec && rec.vid){
       addToQueue(rec.vid, rec.title);
-      $('info-status').textContent='Auto-playlist added: '+rec.title.slice(0,40);
+      setStatus('Auto-playlist added: '+rec.title.slice(0,40));
     } else {
-      $('info-status').textContent='Auto-playlist: no track found';
+      setStatus('Auto-playlist: no track found');
     }
   });
 }
@@ -1323,13 +1354,13 @@ function recommendViaSearch(seedTitle, notQueued, cb){
 function triggerFade(){
   var src=S.a.playing?'a':S.b.playing?'b':null,dest=src==='a'?'b':'a';
   var btn=$('fade-btn'),status=$('info-status');
-  if(!src){status.textContent='PLAY A TRACK FIRST';return;}
-  if(fadeInterval){clearInterval(fadeInterval);fadeInterval=null;btn.classList.remove('fading');btn.textContent='⇄ FADE NOW';status.textContent='CANCELLED';return;}
-  status.textContent='PREPARING...';
+  if(!src){setStatus('PLAY A TRACK FIRST');return;}
+  if(fadeInterval){clearInterval(fadeInterval);fadeInterval=null;btn.classList.remove('fading');btn.textContent='⇄ FADE NOW';setStatus('CANCELLED');return;}
+  setStatus('PREPARING...');
   if(!S[dest].vidId){
-    status.textContent='LOADING NEXT TRACK...';
+    setStatus('LOADING NEXT TRACK...');
     autoLoadNext(dest,src,function(ok){
-      if(!ok){status.textContent='NO TRACK ON DECK '+dest.toUpperCase();return;}
+      if(!ok){setStatus('NO TRACK ON DECK '+dest.toUpperCase());return;}
       setTimeout(function(){if(S[dest].player)S[dest].player.playVideo();setTimeout(function(){startFade(src,dest,btn,status);},800);},1200);
     });
   } else {
@@ -1346,10 +1377,10 @@ function startFade(src,dest,btn,status,overrideDur){
     step++;
     var p=step/steps,eased=p<0.5?2*p*p:1-Math.pow(-2*p+2,2)/2;
     xfEl.value=Math.round(startXF+(targetXF-startXF)*eased);updateXF(xfEl.value);
-    status.textContent='FADING → DECK '+dest.toUpperCase()+' · '+Math.ceil((steps-step)/20)+'s';
+    setStatus('FADING → DECK '+dest.toUpperCase()+' · '+Math.ceil((steps-step)/20)+'s');
     if(step>=steps){
       clearInterval(fadeInterval);fadeInterval=null;btn.classList.remove('fading');btn.textContent='⇄ FADE NOW';
-      status.textContent='✓ FADED TO DECK '+dest.toUpperCase();
+      setStatus('✓ FADED TO DECK '+dest.toUpperCase());
       S.a.autoFadeTriggered=false;S.b.autoFadeTriggered=false;
       // mark the faded-out track so its upcoming ENDED event doesn't also shift the queue
       S[src].fadedAway=true;
@@ -1805,7 +1836,7 @@ function mainLoop(){
         if(remaining>0&&remaining<=fadeDuration+1){
           s.autoFadeTriggered=true;
           var dest=deck==='a'?'b':'a';
-          $('info-status').textContent='AUTO FADING → DECK '+dest.toUpperCase()+'...';
+          setStatus('AUTO FADING → DECK '+dest.toUpperCase()+'...');
           if(!S[dest].vidId){
             autoLoadNext(dest,deck,function(ok){
               if(ok){setTimeout(function(){if(S[dest].player)S[dest].player.playVideo();setTimeout(function(){startFade(deck,dest,$('fade-btn'),$('info-status'));},800);},1200);}
