@@ -92,10 +92,11 @@ body{background:#0e0e0e;background-image:radial-gradient(circle at 50% 0%, #1e1e
 .album-art canvas{width:110px;height:110px;border-radius:50%}
 .album-label{position:absolute;width:22px;height:22px;border-radius:50%;background:var(--panel);border:2px solid #111;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2}
 .track-info{background:#161210;border:1px solid var(--border);border-radius:4px;padding:8px 10px;display:flex;align-items:center;gap:10px;position:relative;overflow:hidden;box-shadow:inset 0 1px 4px rgba(0,0,0,0.6)}
+.track-text{flex:1;min-width:0}
+.track-time{font-family:'DM Mono',monospace;font-size:11px;color:var(--orange);text-shadow:0 0 5px rgba(232,140,60,0.3);white-space:nowrap;letter-spacing:0.5px}
 .track-info::before{content:'';position:absolute;inset:0;pointer-events:none;background-image:repeating-linear-gradient(0deg,rgba(0,0,0,0.25) 0px,rgba(0,0,0,0.25) 1px,transparent 1px,transparent 3px),repeating-linear-gradient(90deg,rgba(0,0,0,0.18) 0px,rgba(0,0,0,0.18) 1px,transparent 1px,transparent 3px);opacity:0.55;z-index:0}
 .track-info::after{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 0%,rgba(232,101,26,0.07),transparent 70%);z-index:0}
 .track-info>*{position:relative;z-index:1}
-.track-text{flex:1;min-width:0}
 .track-name{font-size:11px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#e6ded2;text-shadow:0 0 4px rgba(232,140,60,0.18)}
 .track-sub{font-size:9px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace}
 .fav-np{background:none;border:none;cursor:pointer;font-size:16px;color:var(--muted);padding:0;flex-shrink:0}
@@ -182,7 +183,7 @@ input[type=range].xfader::-webkit-slider-thumb{-webkit-appearance:none;width:16p
 .info-row{display:flex;align-items:center;gap:6px;font-family:'DM Mono',monospace}
 .info-deck{font-size:10px;font-weight:700;color:var(--orange);width:10px}
 .info-time{font-size:10px;color:#e6ded2;flex:1;text-shadow:0 0 4px rgba(232,140,60,0.18)}
-.info-pct{font-size:10px;color:var(--orange);text-shadow:0 0 4px rgba(232,140,60,0.25)}
+.info-pct{font-size:10px;color:var(--orange);text-shadow:0 0 4px rgba(232,140,60,0.25);margin-left:auto}
 .info-row-detail{padding-left:16px;gap:12px}
 .info-detail{display:flex;align-items:center;gap:5px;font-size:8px;color:#a89e90}
 .info-k{color:#6a6055;font-size:7px;letter-spacing:1px}
@@ -313,7 +314,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag" style="color:var(--orange)">v6.7</div></div>
+  <div class="header-left"><div class="screw"></div><div class="logo">SPIN<span>LAB</span></div><div class="model-tag" style="color:var(--orange)">v6.9</div></div>
   <div class="header-right">
     <div class="led-row"><div class="led on" id="led-a"></div><div class="led" id="led-b"></div><div class="led green" style="margin-left:4px"></div></div>
     <button class="settings-btn" id="btn-settings">⚙</button>
@@ -331,7 +332,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
     <div class="search-row"><input class="search-input" id="search-a" placeholder="Search YouTube..."><button class="srch-btn" id="srch-a">FIND</button></div>
     <div class="results" id="results-a"></div>
     <div class="platter-wrap"><div class="platter-outer"><div class="platter-ring"></div><div class="platter-ring2"></div><div class="album-art"><canvas id="art-a" width="110" height="110"></canvas><div class="album-label"></div></div></div></div>
-    <div class="track-info"><div class="track-text"><div class="track-name" id="title-a">No track loaded</div><div class="track-sub" id="status-a">—</div></div><button class="fav-np" id="lyrics-a" title="Lyrics" style="font-size:13px">♪</button><button class="fav-np" id="fav-a">★</button></div>
+    <div class="track-info"><div class="track-text"><div class="track-name" id="title-a">No track loaded</div><div class="track-sub" id="status-a">—</div></div><div class="track-time"><span id="time-a">0:00</span> / <span id="dur-a">0:00</span></div><button class="fav-np" id="lyrics-a" title="Lyrics" style="font-size:13px">♪</button><button class="fav-np" id="fav-a">★</button></div>
     <div class="wf-wrap" id="wfw-a"><canvas class="wf" id="wf-a"></canvas><div class="wf-head"></div><div class="cue-mark" id="cue-a"></div></div>
     <div class="transport"><button class="play-btn" id="play-a">▶</button><div class="prog-wrap"><input type="range" class="prog" id="prog-a" min="0" max="1000" value="0"></div></div>
     <div class="eq-section" id="eq-a">
@@ -371,11 +372,11 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
       <button class="fade-btn" id="auto-playlist-btn" style="color:var(--muted)" title="When the queue runs low, auto-add a recommended track (requires Auto Fade on)">AUTO PLAYLIST: OFF</button>
     </div>
     <div class="info-screen">
-      <div class="info-row"><span class="info-deck">A</span><span class="info-time"><span id="time-a">0:00</span>/<span id="dur-a">0:00</span></span><span class="info-pct" id="xf-a">100%</span></div>
+      <div class="info-row"><span class="info-deck">A</span><span class="info-pct" id="xf-a">100%</span></div>
       <div class="info-row info-row-detail"><span class="info-detail"><span class="info-k">TMP</span><span id="tv-a">0.0%</span></span><span class="info-detail"><span class="info-k">VOL</span><span id="vv-a">85</span></span></div>
       <div class="info-row info-row-detail"><span class="info-detail"><span class="info-k">EQ</span><span id="eq-name-a">Flat</span></span></div>
       <div class="info-divider"></div>
-      <div class="info-row"><span class="info-deck">B</span><span class="info-time"><span id="time-b">0:00</span>/<span id="dur-b">0:00</span></span><span class="info-pct" id="xf-b">0%</span></div>
+      <div class="info-row"><span class="info-deck">B</span><span class="info-pct" id="xf-b">0%</span></div>
       <div class="info-row info-row-detail"><span class="info-detail"><span class="info-k">TMP</span><span id="tv-b">0.0%</span></span><span class="info-detail"><span class="info-k">VOL</span><span id="vv-b">85</span></span></div>
       <div class="info-row info-row-detail"><span class="info-detail"><span class="info-k">EQ</span><span id="eq-name-b">Flat</span></span></div>
       <div class="info-divider"></div>
@@ -391,7 +392,7 @@ input[type=range].fade-time-slider::-webkit-slider-thumb{-webkit-appearance:none
     <div class="search-row"><input class="search-input" id="search-b" placeholder="Search YouTube..."><button class="srch-btn" id="srch-b">FIND</button></div>
     <div class="results" id="results-b"></div>
     <div class="platter-wrap"><div class="platter-outer"><div class="platter-ring"></div><div class="platter-ring2"></div><div class="album-art"><canvas id="art-b" width="110" height="110"></canvas><div class="album-label"></div></div></div></div>
-    <div class="track-info"><div class="track-text"><div class="track-name" id="title-b">No track loaded</div><div class="track-sub" id="status-b">—</div></div><button class="fav-np" id="lyrics-b" title="Lyrics" style="font-size:13px">♪</button><button class="fav-np" id="fav-b">★</button></div>
+    <div class="track-info"><div class="track-text"><div class="track-name" id="title-b">No track loaded</div><div class="track-sub" id="status-b">—</div></div><div class="track-time"><span id="time-b">0:00</span> / <span id="dur-b">0:00</span></div><button class="fav-np" id="lyrics-b" title="Lyrics" style="font-size:13px">♪</button><button class="fav-np" id="fav-b">★</button></div>
     <div class="wf-wrap" id="wfw-b"><canvas class="wf" id="wf-b"></canvas><div class="wf-head"></div><div class="cue-mark" id="cue-b"></div></div>
     <div class="transport"><button class="play-btn" id="play-b">▶</button><div class="prog-wrap"><input type="range" class="prog" id="prog-b" min="0" max="1000" value="0"></div></div>
     <div class="eq-section" id="eq-b">
